@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SpeedAI - My Video Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            background-color: rgba(43, 140, 238, 0.1);
+            border-left: 4px solid #2b8cee;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex">
+<!-- Side Navigation -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen sticky top-0 bg-white dark:bg-background-dark">
+<div class="p-6 flex items-center gap-3">
+<div class="bg-primary rounded-lg p-1.5 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-2xl">bolt</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">SpeedAI</h1>
+</div>
+<nav class="flex-1 px-4 space-y-1 mt-4">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary bg-primary/10 dark:bg-primary/5 active-nav" href="#">
+<span class="material-symbols-outlined text-primary">video_library</span>
+<span class="font-semibold text-sm">My Videos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-medium text-sm">Athletes</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-medium text-sm">Reports</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 mb-6 p-2 rounded-xl bg-slate-100 dark:bg-slate-800/50">
+<div class="size-10 rounded-full bg-slate-300 dark:bg-slate-700 bg-cover bg-center" data-alt="Headshot of Coach Marcus Smith" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBdFkf87WPHg7HguS-IdH6GWJpU_TidqNoktFjeZ38lR6i9xh-pOqLu2FSrwQzGVxa1s5M6mzWj01WdS2JVmo1kJVDNMLvPOOCh56v5e5N3zhmBX-CfHMcO1LR1XdFs55qJ6YbPPLaaSdyTevHB-6Hj34S9NH4DP_CX6ggu9dudPJaXqShDZuIsR80v0M--7RaNvHqIXHMjmxKG5FAcIZBHLowx-H5IsxfucftCUnC541IcK1nZrEvixE_G203w51TQYmffyZ4-s7_4')"></div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Marcus Smith</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">Elite Coach</p>
+</div>
+</div>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-medium text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col bg-background-light dark:bg-background-dark overflow-y-auto">
+<!-- Header Section -->
+<header class="p-8 pb-4">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="text-3xl font-bold text-slate-900 dark:text-white">Video Library</h2>
+<p class="text-slate-500 dark:text-slate-400 mt-1">Manage and analyze your athletes' sprint performance.</p>
+</div>
+<button class="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">upload</span>
+                    Upload New Video
+                </button>
+</div>
+<!-- Filter Controls -->
+<div class="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg pl-10 text-sm focus:ring-primary focus:border-primary py-2.5 transition-all" placeholder="Search athletes or videos..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-primary text-lg">distance</span>
+                        Sprint Distance
+                        <span class="material-symbols-outlined text-slate-400">expand_more</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-primary text-lg">calendar_today</span>
+                        Date Range
+                        <span class="material-symbols-outlined text-slate-400">expand_more</span>
+</div>
+<div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+<button class="p-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Video Grid -->
+<section class="p-8 pt-4">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Card 1: Analyzed -->
+<div class="group bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col">
+<div class="relative aspect-video bg-slate-900">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="Athlete starting a sprint on track" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuATQU2Zz4z9r2o_JN1tUb0h9VfPXxCkjMsqxS094HYp8a9PTH9_7DLh22CY8R6B8Ea6IDmt1MULPUbUy23t9wy0bopDDNSUJjZJcbC1KkQWfd9Q6FS-_RddbIuNlsoMPnG6X2VeG8Un316e3YnfsDxfsdG43BRMN6IJ-6uXAmcTswRR7EyrHvhY9BB_WK_udpkHMeariO5KOSj5QKHofS7Vo1tYC55vsrK7M2Skt4pG-AW-Qk7keS4qR8-jO42CfoVTUHqoCJejwYp-')"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded uppercase tracking-wider">Analyzed</span>
+<span class="px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded uppercase tracking-wider">60m</span>
+</div>
+<button class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+<span class="material-symbols-outlined text-white text-3xl fill-1">play_arrow</span>
+</div>
+</button>
+<div class="absolute bottom-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[10px] font-medium text-white">00:12</div>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Jordan Henderson</h3>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_month</span>
+                            Oct 24, 2023
+                            <span class="size-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
+<span>4:15 PM</span>
+</div>
+<div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-sm font-bold">speed</span>
+<span class="text-xs font-bold italic">Top Speed: 9.8m/s</span>
+</div>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Processing -->
+<div class="group bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col">
+<div class="relative aspect-video bg-slate-900">
+<div class="absolute inset-0 bg-cover bg-center grayscale" data-alt="Blurred runner on indoor track" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0sbRAgbJbE2LvP0WOFADvX0VIBCapL_sVHL-i8mYfXdx1JBlAa7VyohSwIQuEkcM_2L-yYvcxAOugG2cm1OGw3VNcywc0dRYqrfUEUaXlvWTtydA7pKnmQLLfgQkovDZnP21jCl4XhuCT7lMOBOk_OGRm_q7Z1uEaS2y3dByYBUJbHHHa0Axg6IGFQ6icJhGRqcRzakeYRdOJzJkKY-JklTESkDi6zc5e9EwFeAcs3FhFJdrr8pTy0Nm_29KYQiFXhZLsPCDWykrb')"></div>
+<div class="absolute inset-0 bg-slate-900/40 flex flex-col items-center justify-center">
+<div class="size-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin mb-3"></div>
+<span class="text-white text-[10px] font-bold uppercase tracking-widest">Processing</span>
+</div>
+<div class="absolute bottom-0 left-0 h-1 bg-primary w-2/3"></div>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Sarah Jenkins</h3>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_month</span>
+                            Oct 24, 2023
+                            <span class="size-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
+<span>1:22 PM</span>
+</div>
+<div class="mt-auto pt-4 flex items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-semibold">Estimated completion: 2 min</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Needs Review -->
+<div class="group bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col">
+<div class="relative aspect-video bg-slate-900">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Athlete preparing in blocks" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB95mEB_aQq8S4OaRkX9rt9EuNiSRmV9TDs8WibLntGgCREu4El00m1BBpuBT3Bf-zH_55dhbqFAs7GNKl_c0oAdjktazGG-KTg8dG6hI8b64_x2_WdRfxMxlPbSTBrVfLvGcZN7dYet6hKXijQOtN6joJa0mXHR7BizLomgBCmswxNPBxUZR_URokfcD9uXa8z-W1qLCfLTB7JbGAUHbDjcQyU8fTVgvZW7A0qvc7IMvv5Dy-YwndQGQI_eXe8RR8F5AM9uz9YsPOL')"></div>
+<div class="absolute inset-0 bg-black/30"></div>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="px-2 py-1 bg-amber-500 text-white text-[10px] font-bold rounded uppercase tracking-wider">Needs Review</span>
+<span class="px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded uppercase tracking-wider">100m</span>
+</div>
+<button class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+<span class="material-symbols-outlined text-white text-3xl">edit_note</span>
+</div>
+</button>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Mike Ross</h3>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_month</span>
+                            Oct 23, 2023
+                            <span class="size-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
+<span>11:45 AM</span>
+</div>
+<p class="text-xs text-amber-600 dark:text-amber-500 font-medium mt-4 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">Multiple starts detected. Please confirm analysis range.</p>
+</div>
+</div>
+<!-- Card 4: Analyzed -->
+<div class="group bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col">
+<div class="relative aspect-video bg-slate-900">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Athlete running on track" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCV0UCRE84CC8VwJ8PWnZz1Eujcu1lS71g6RO4mp3i7zz981VTAeHT30hsYdyrcafTWBodQaGgXFrO-5BnI5JTBB1Yjydjpdhk0FBy8vHVw8Q0o0piLUSh6UT-Mq1WJG7vGxx_b_wEUyKr6_rI8MK9VZMxdqvm4PzdNIgAiki2bpFy-nYh_NCESpEntPl_whIwfZjmDjQLBipq28OxcTL5ZapsoX9hRTCA7uJsjWDBVQF-fsyxoxzi6VErYXmRwJwKKvqaCioUi2A5j')"></div>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded uppercase tracking-wider">Analyzed</span>
+<span class="px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded uppercase tracking-wider">40yd</span>
+</div>
+<button class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+<span class="material-symbols-outlined text-white text-3xl fill-1">play_arrow</span>
+</div>
+</button>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">David Goggins</h3>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_month</span>
+                            Oct 22, 2023
+                            <span class="size-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
+<span>9:00 AM</span>
+</div>
+<div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-sm font-bold">speed</span>
+<span class="text-xs font-bold italic">Top Speed: 10.2m/s</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 5: Analyzed -->
+<div class="group bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col">
+<div class="relative aspect-video bg-slate-900">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Runner stretching before race" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDHVqcwJWoimlnSuttBEZoejpXuh8X7JDAsvub8wqsxfsOH0PRlvLXqdPMt3pWuDXGmZDEj2a-D-_jlKzatIDcxbF3aMEeNgr5ZqBNADnt9r_yZqqscPad6eAyQj5PvrefGpzKzWLb7hJ7hp_iY0qJrA4VplDvTXOquEcgc0-P6iY1Ch-y065c6oFtZX2AMEbyaP4oNzaliExJRbdZ1tt9sWY1s8ky9_rvJHs0F16HbwWHlBZX8c1zNIsxgTLPmotEwjAjzhxuNJwkh')"></div>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded uppercase tracking-wider">Analyzed</span>
+<span class="px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded uppercase tracking-wider">10m</span>
+</div>
+<button class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+<span class="material-symbols-outlined text-white text-3xl fill-1">play_arrow</span>
+</div>
+</button>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Alex Honnold</h3>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_month</span>
+                            Oct 21, 2023
+                            <span class="size-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
+<span>4:55 PM</span>
+</div>
+<div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-sm font-bold">speed</span>
+<span class="text-xs font-bold italic">Start Response: 0.14s</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Add New Video Placeholder Card -->
+<div class="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center p-8 bg-white/50 dark:bg-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/20 hover:border-primary transition-all group cursor-pointer aspect-video md:aspect-auto">
+<div class="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+<span class="material-symbols-outlined text-2xl">add</span>
+</div>
+<p class="font-semibold text-sm">Add more videos</p>
+<p class="text-xs text-slate-500 mt-1">Drag and drop files here</p>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-12 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-6">
+<p class="text-sm text-slate-500 dark:text-slate-400">Showing 1-12 of 84 analyses</p>
+<div class="flex items-center gap-2">
+<button class="p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="size-10 bg-primary text-white font-bold rounded-lg text-sm">1</button>
+<button class="size-10 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm transition-colors">2</button>
+<button class="size-10 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm transition-colors">3</button>
+<span class="text-slate-400 px-2">...</span>
+<button class="size-10 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm transition-colors">8</button>
+<button class="p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</body></html>
