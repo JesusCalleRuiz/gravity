@@ -1,7 +1,26 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\VideoController;
+use App\Http\Controllers\AuthController;
 
-Route::get('/', function () {
-    return view('welcome');
+// Rutas de Invitado (Auth)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+});
+
+// Rutas Protegidas (Dashboard & Videos)
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/', [VideoController::class, 'index'])->name('videos.index');
+    Route::get('/import', [VideoController::class, 'import'])->name('videos.import');
+    Route::post('/upload', [VideoController::class, 'store'])->name('videos.store');
+    Route::get('/videos/{id}', [VideoController::class, 'show'])->name('videos.show');
+    
+    // Endpoint para el Polling de progreso desde el frontend
+    Route::get('/api/videos/{id}/progress', [VideoController::class, 'progressApi'])->name('videos.progress');
 });
