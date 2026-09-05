@@ -21,4 +21,9 @@
 /vendor
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+# Media files / error captures
+*frame_error*
+*processed_16*
+*174*
+
