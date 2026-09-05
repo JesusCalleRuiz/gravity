@@ -7,6 +7,7 @@ use App\Jobs\ProcessVideoJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class VideoController extends Controller
 {
@@ -122,6 +123,71 @@ class VideoController extends Controller
             'progress' => $video->progress,
             'result_data' => $video->result_data,
             'error_message' => $video->error_message,
+            'file_path' => $video->file_path,
         ]);
     }
+
+    /**
+     * Ruta histórica /videos/{id}/report: la vista HTML que servía aquí
+     * (report.blade.php) mostraba métricas inventadas con el mismo mecanismo
+     * de captura-a-PDF en el cliente que analyze_tacos.py — sustituida por
+     * el PDF real del lado Python (reportPdf), esta ruta solo redirige.
+     */
+    public function report($id)
+    {
+        return redirect()->route('videos.report.pdf', $id);
+    }
+
+    /**
+     * Genera y descarga el informe PDF de una sesión ya analizada.
+     *
+     * No repite el análisis: reutiliza el result_data ya guardado y los
+     * landmarks ya cacheados de esa misma ejecución. La generación en sí
+     * vive en core.feedback.generar_informe_pdf (entrenador), no aquí.
+     */
+    public function reportPdf($id)
+    {
+        $video = Video::where('user_id', Auth::id())->findOrFail($id);
+
+        if ($video->status !== 'completed') {
+            return redirect()->route('videos.show', $video->id)
+                ->with('error', 'El informe estará disponible una vez que finalice el análisis.');
+        }
+
+        $tmpDir = storage_path('app/tmp');
+        if (!File::exists($tmpDir)) {
+            File::makeDirectory($tmpDir, 0755, true);
+        }
+
+        $resultJsonPath = $tmpDir . "/result_{$video->id}.json";
+        $outputPdfPath = $tmpDir . "/informe_{$video->id}.pdf";
+        File::put($resultJsonPath, json_encode($video->result_data));
+
+        $pythonBinary = 'python';
+        if (file_exists('C:/APPS/python-3.11.1-embed-amd64/python.exe')) {
+            $pythonBinary = 'C:/APPS/python-3.11.1-embed-amd64/python.exe';
+        }
+        $pythonScript = base_path('python/generar_pdf.py');
+
+        $process = new \Symfony\Component\Process\Process([
+            $pythonBinary,
+            $pythonScript,
+            '--result-json', $resultJsonPath,
+            '--output', $outputPdfPath,
+            '--titulo', $video->title,
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        File::delete($resultJsonPath);
+
+        if (!$process->isSuccessful() || !File::exists($outputPdfPath)) {
+            Log::error("Fallo generando PDF para video ID {$video->id}: " . $process->getErrorOutput());
+            return redirect()->route('videos.show', $video->id)
+                ->with('error', 'No se ha podido generar el informe PDF.');
+        }
+
+        return response()->download($outputPdfPath, "informe_biomecanico_{$video->id}.pdf")->deleteFileAfterSend(true);
+    }
 }
+
