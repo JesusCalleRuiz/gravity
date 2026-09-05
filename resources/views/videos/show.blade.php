@@ -3,6 +3,9 @@
 @section('title', 'Análisis de Lote - SpeedVision AI')
 
 @section('content')
+    @php
+        $metrics = $video->result_data ?? [];
+    @endphp
     <main class="flex-1 flex flex-col px-6 py-8 lg:px-10 max-w-7xl w-full mx-auto">
         <!-- Back Navigation -->
         <div class="mb-6">
@@ -13,37 +16,40 @@
         </div>
 
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 class="text-2xl font-extrabold text-white tracking-tight" id="show-title">{{ $video->title }}</h1>
-                <p class="text-xs text-slate-400 mt-1">Registrado el {{ $video->created_at->format('d/m/Y H:i:s') }}</p>
+        <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+            <div class="flex flex-col gap-1">
+                <h1 class="text-3xl font-black text-white tracking-tight" id="show-title">{{ $video->title }}</h1>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400 mt-1">
+                    <span class="flex items-center gap-1"><span class="material-symbols-outlined !text-sm text-primary">person</span> {{ Auth::user()->name }}</span>
+                    <span class="size-1 bg-slate-700 rounded-full"></span>
+                    <span class="flex items-center gap-1"><span class="material-symbols-outlined !text-sm">calendar_today</span> {{ $video->created_at->format('M d, Y') }}</span>
+                    <span class="size-1 bg-slate-700 rounded-full"></span>
+                    <span class="flex items-center gap-1 font-semibold text-primary" id="status-badge-container">
+                        @if($video->status === 'completed')
+                            <span class="flex items-center gap-1"><span class="material-symbols-outlined !text-sm text-emerald-400">verified</span> Análisis Biomecánico Listo</span>
+                        @elseif($video->status === 'processing')
+                            <span class="flex items-center gap-1 animate-pulse text-amber-400"><span class="material-symbols-outlined !text-sm text-amber-400">sync</span> Procesando Cinemática...</span>
+                        @elseif($video->status === 'pending')
+                            <span class="flex items-center gap-1 text-slate-400"><span class="material-symbols-outlined !text-sm">hourglass_empty</span> En Cola de Análisis</span>
+                        @else
+                            <span class="flex items-center gap-1 text-red-400"><span class="material-symbols-outlined !text-sm">report_problem</span> Fallo en Análisis</span>
+                        @endif
+                    </span>
+                </div>
             </div>
-            <div id="status-badge-container">
-                <!-- El estado se actualizará dinámicamente -->
-                @if($video->status === 'completed')
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <span class="size-1.5 rounded-full bg-emerald-400"></span> Completado
-                    </span>
-                @elseif($video->status === 'processing')
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        <span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span> Analizando...
-                    </span>
-                @elseif($video->status === 'pending')
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
-                        <span class="size-1.5 rounded-full bg-slate-500"></span> En Cola de Espera
-                    </span>
-                @else
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                        <span class="size-1.5 rounded-full bg-red-400"></span> Fallo de análisis
-                    </span>
-                @endif
+            <div class="flex gap-3">
+                <a href="{{ route('videos.report.pdf', $video->id) }}" id="download-report-btn" class="{{ $video->status === 'completed' ? '' : 'hidden' }} flex items-center gap-2 rounded-lg h-10 px-4 bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white transition-colors border border-slate-700/50 shadow-sm">
+                    <span class="material-symbols-outlined text-lg text-primary">download</span> Descargar Informe PDF
+                </a>
+                <a href="{{ $video->status === 'completed' ? asset($video->file_path) : '#' }}" download id="download-video-btn" class="{{ $video->status === 'completed' ? '' : 'hidden' }} flex items-center gap-2 rounded-lg h-10 px-4 bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white transition-colors border border-slate-700/50 shadow-sm">
+                    <span class="material-symbols-outlined text-lg text-primary">video_file</span> Descargar Vídeo Analizado
+                </a>
             </div>
         </div>
 
         <!-- 1. PANTALLA DE PROGRESO (Visible mientras se procesa) -->
         <div id="processing-view" class="{{ in_array($video->status, ['pending', 'processing']) ? '' : 'hidden' }} bg-[#1a2530] border border-slate-200/5 rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full my-8 shadow-2xl">
             <div class="relative size-24 mx-auto mb-6">
-                <!-- Círculo de Carga Pulsante -->
                 <div class="absolute inset-0 rounded-full border-4 border-primary/20"></div>
                 <div class="absolute inset-0 rounded-full border-4 border-t-primary animate-spin"></div>
                 <div class="absolute inset-0 flex items-center justify-center text-primary">
@@ -51,12 +57,12 @@
                 </div>
             </div>
 
-            <h3 class="text-xl font-bold text-white mb-2" id="progress-header">Procesando lote de videos</h3>
+            <h3 class="text-xl font-bold text-white mb-2" id="progress-header">Procesando cinemática de carrera</h3>
             <p class="text-slate-400 text-sm max-w-md mx-auto mb-8" id="progress-subheader">
-                El modelo de aprendizaje automático está escaneando la salida de la rampa para clasificar y reportar errores de cinta en tiempo real.
+                Se está reconstruyendo el esqueleto biomecánico de la salida y calculando los ángulos de contacto,
+                despegue y extensión de cada zancada.
             </p>
 
-            <!-- Progress Bar -->
             <div class="max-w-md mx-auto mb-3">
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-xs font-semibold text-slate-400" id="progress-status-text">Analizando fotogramas...</span>
@@ -73,121 +79,136 @@
             </div>
         </div>
 
-        <!-- 2. PANTALLA DE ERROR (Visible si falla) -->
+        <!-- 2. PANTALLA DE ERROR / RECHAZO (Visible si falla o si la puerta de calidad rechaza el vídeo) -->
         <div id="failed-view" class="{{ $video->status === 'failed' ? '' : 'hidden' }} bg-[#1a2530] border border-red-500/20 rounded-2xl p-8 text-center max-w-2xl mx-auto w-full my-8 shadow-2xl">
             <div class="size-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-400 mx-auto mb-4">
                 <span class="material-symbols-outlined !text-3xl">report_problem</span>
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">Error en el Análisis</h3>
-            <p class="text-slate-400 text-sm max-w-md mx-auto mb-6" id="error-message-text">
-                {{ $video->error_message ?? 'El script de análisis de Python ha devuelto un código de error inesperado o falló la decodificación del video.' }}
-            </p>
-            <a href="{{ route('videos.import') }}" class="inline-flex items-center justify-center gap-2 rounded-xl h-11 px-5 bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition-colors">
+            <h3 class="text-lg font-bold text-white mb-2" id="failed-title">
+                {{ isset($metrics['quality']) ? 'Vídeo rechazado por la puerta de calidad' : 'Error en el análisis biomecánico' }}
+            </h3>
+            <div class="text-slate-400 text-sm max-w-md mx-auto mb-2 text-left" id="error-message-text">
+                @if(isset($metrics['quality']['motivos']) && count($metrics['quality']['motivos']) > 0)
+                    <ul class="list-disc list-inside space-y-1">
+                        @foreach($metrics['quality']['motivos'] as $motivo)
+                            <li>{{ $motivo }}</li>
+                        @endforeach
+                    </ul>
+                @else
+                    <p>{{ $video->error_message ?? 'El análisis no ha podido completarse.' }}</p>
+                @endif
+            </div>
+            <a href="{{ route('videos.import') }}" class="inline-flex items-center justify-center gap-2 rounded-xl h-11 px-5 bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition-colors mt-4">
                 <span class="material-symbols-outlined !text-sm">replay</span>
-                <span>Volver a intentar</span>
+                <span>Volver a intentar subida</span>
             </a>
         </div>
 
         <!-- 3. DETALLE DE ANÁLISIS FINALIZADO (Visible cuando se completa) -->
         <div id="completed-view" class="{{ $video->status === 'completed' ? '' : 'hidden' }} grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            <!-- Video Player (Col 7) -->
-            <div class="lg:col-span-7 space-y-6">
-                <div class="bg-[#1a2530] border border-slate-200/5 rounded-2xl overflow-hidden shadow-2xl">
-                    <div class="relative aspect-video bg-black flex items-center justify-center">
-                        <video id="taco-video" class="w-full h-full object-contain" controls preload="auto">
-                            <!-- El source se cargará dinámicamente si se sube un video real -->
-                            <source src="{{ asset($video->file_path) }}" type="video/mp4">
+
+            <!-- Video Player + Navegación por zancadas + Evidencia (Col 8) -->
+            <div class="lg:col-span-8 space-y-6">
+                <div class="relative bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 group">
+                    <div class="aspect-video relative bg-slate-950 flex items-center justify-center overflow-hidden">
+                        <video id="taco-video" class="w-full h-full object-contain" preload="auto">
+                            <source src="{{ $video->status === 'completed' ? asset($video->file_path) : '' }}" type="video/mp4">
                             Tu navegador no soporta el tag de video.
                         </video>
-                    </div>
-                    <div class="p-5 border-t border-slate-200/10 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-slate-400">play_circle</span>
-                            <span class="text-xs font-semibold text-slate-300">Reproductor interactivo inteligente</span>
+                        <div class="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
+                            <span class="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-mono font-bold text-white flex items-center gap-2 border border-white/10 shadow-lg">
+                                <span class="size-2 bg-red-500 rounded-full animate-ping"></span> TRACKING ATLETA
+                            </span>
                         </div>
-                        <span class="text-xs text-slate-500">Pulsa en los errores de la línea de tiempo para saltar al fotograma.</span>
+                    </div>
+
+                    <!-- Custom Professional Video Controls -->
+                    <div class="bg-slate-900/95 backdrop-blur-md p-4 border-t border-slate-800/80">
+                        <div class="relative h-6 flex items-center mb-3 px-2 group/track select-none">
+                            <input type="range" id="timeline-slider" min="0" max="100" step="0.1" value="0"
+                                   class="absolute inset-0 w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer outline-none accent-primary focus:ring-0 z-10 opacity-30 group-hover/track:opacity-75 transition-opacity"/>
+                            <div id="timeline-progress" class="absolute left-2 h-1.5 bg-primary rounded-full pointer-events-none" style="width: 0%"></div>
+                            <!-- Marcas de contacto de cada zancada, una por cada frame_contacto real -->
+                            <div id="timeline-hotspots-container" class="absolute inset-0 pointer-events-none"></div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5 text-white">
+                                <button onclick="skipTime(-0.1)" class="text-slate-400 hover:text-white transition-colors flex items-center" title="Frame Atrás">
+                                    <span class="material-symbols-outlined !text-2xl">skip_previous</span>
+                                </button>
+                                <button id="play-pause-btn" onclick="togglePlay()" class="text-primary hover:text-primary/80 transition-colors flex items-center" title="Reproducir / Pausa">
+                                    <span class="material-symbols-outlined !text-4xl fill-1" id="play-icon">play_circle</span>
+                                </button>
+                                <button onclick="skipTime(0.1)" class="text-slate-400 hover:text-white transition-colors flex items-center" title="Frame Adelante">
+                                    <span class="material-symbols-outlined !text-2xl">skip_next</span>
+                                </button>
+                                <span class="text-xs font-mono ml-2 text-slate-300" id="video-time">0.00s / 0.00s</span>
+                            </div>
+
+                            <div class="flex items-center gap-6 text-slate-400 text-xs">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-bold text-slate-500">VELOCIDAD</span>
+                                    <select id="speed-selector" onchange="changeSpeed(this.value)" class="bg-slate-800 border-slate-700 text-xs font-bold text-white rounded-lg focus:ring-primary focus:border-primary py-1 px-2.5 cursor-pointer">
+                                        <option value="0.25">0.25x (Lento)</option>
+                                        <option value="0.5" selected>0.50x (Estudio)</option>
+                                        <option value="1.0">1.00x (Real)</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button onclick="toggleMute()" class="hover:text-white transition-colors flex items-center" id="volume-btn">
+                                        <span class="material-symbols-outlined !text-xl">volume_up</span>
+                                    </button>
+                                    <button onclick="toggleFullscreen()" class="hover:text-white transition-colors flex items-center">
+                                        <span class="material-symbols-outlined !text-xl">fullscreen</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Resumen de Métricas de Calidad -->
-                <div class="grid grid-cols-3 gap-4" id="metrics-grid">
-                    @php
-                        $metrics = $video->result_data ?? [];
-                    @endphp
-                    <div class="bg-[#1a2530] border border-slate-200/5 p-4 rounded-xl text-center shadow-lg">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tacos Analizados</span>
-                        <span class="text-xl font-extrabold text-white mt-1 block" id="metric-analyzed">{{ $metrics['tacos_analyzed'] ?? 0 }}</span>
-                    </div>
-                    <div class="bg-[#1a2530] border border-slate-200/5 p-4 rounded-xl text-center shadow-lg">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tasa de Éxito</span>
-                        <span class="text-xl font-extrabold text-emerald-400 mt-1 block" id="metric-accuracy">
-                            {{ isset($metrics['tacos_analyzed']) && isset($metrics['detections_count']) && $metrics['tacos_analyzed'] > 0 
-                               ? round((($metrics['tacos_analyzed'] - $metrics['detections_count']) / $metrics['tacos_analyzed']) * 100, 1) 
-                               : 100 }}%
-                        </span>
-                    </div>
-                    <div class="bg-[#1a2530] border border-slate-200/5 p-4 rounded-xl text-center shadow-lg">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Confianza IA</span>
-                        <span class="text-xl font-extrabold text-primary mt-1 block" id="metric-confidence">{{ $metrics['accuracy'] ?? 0 }}%</span>
-                    </div>
+                <!-- Navegación por zancadas -->
+                <div class="bg-[#1a2530] border border-slate-200/5 rounded-2xl p-6 shadow-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-primary text-xl">directions_walk</span>
+                        <span>Zancadas detectadas</span>
+                    </h3>
+                    <div class="flex flex-wrap gap-2" id="zancadas-nav"></div>
+                    <p class="text-[11px] text-slate-500 mt-3">Pulsa una zancada para saltar al instante del contacto en el vídeo y ver su evidencia debajo.</p>
+                </div>
+
+                <!-- Evidencia biomecánica de la zancada seleccionada -->
+                <div class="bg-[#1a2530] border border-slate-200/5 rounded-2xl p-6 shadow-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-primary text-xl">analytics</span>
+                        <span>Evidencia biomecánica</span>
+                    </h3>
+                    <div id="zancada-evidencia" class="text-sm text-slate-400">Selecciona una zancada arriba.</div>
                 </div>
             </div>
 
-            <!-- Detections Timeline / Sidebar (Col 5) -->
-            <div class="lg:col-span-5 bg-[#1a2530] border border-slate-200/5 rounded-2xl shadow-2xl p-6 space-y-6">
-                <div>
-                    <h3 class="text-lg font-bold text-white mb-1 flex items-center justify-between">
-                        <span>Línea de Tiempo de Errores</span>
-                        <span class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full font-extrabold" id="error-badge-count">
-                            {{ $metrics['detections_count'] ?? 0 }}
-                        </span>
+            <!-- Right Sidebar: Resumen real del análisis (Col 4) -->
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-[#1a2530] border border-slate-200/5 rounded-2xl overflow-hidden shadow-2xl">
+                    <div class="p-4 border-b border-slate-800/80 flex justify-between items-center bg-slate-900/30">
+                        <h3 class="font-bold text-sm text-white tracking-tight flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-lg">assessment</span>
+                            <span>Resumen del análisis</span>
+                        </h3>
+                    </div>
+                    <div class="p-5 space-y-4" id="resumen-analisis"></div>
+                </div>
+
+                <!-- Longitud de zancada real, medida por ciclo (no estimada) -->
+                <div class="bg-[#1a2530] border border-slate-200/5 rounded-2xl p-5 shadow-2xl">
+                    <h3 class="font-bold text-sm text-white tracking-tight flex items-center gap-2 mb-6">
+                        <span class="material-symbols-outlined text-primary text-lg">stacked_line_chart</span>
+                        <span>Longitud de zancada</span>
                     </h3>
-                    <p class="text-xs text-slate-400">Detecciones de fallos en la cinta transportadora por segundo.</p>
+                    <div class="h-32 w-full flex items-end gap-2 px-1 relative" id="longitud-zancada-chart"></div>
+                    <p class="text-[10px] text-slate-500 mt-3">Desplazamiento de cadera por ciclo, en fracción de longitud de pierna. Una barra por zancada detectada.</p>
                 </div>
-
-                <!-- Timeline Scroll Container -->
-                <div class="space-y-4 max-h-[420px] overflow-y-auto pr-2 custom-scrollbar" id="timeline-container">
-                    @if(isset($metrics['detections']) && count($metrics['detections']) > 0)
-                        @foreach($metrics['detections'] as $index => $detection)
-                            <div onclick="seekTo({{ $detection['timestamp'] }})" 
-                                 class="p-4 bg-slate-900/50 hover:bg-slate-900 rounded-xl border border-slate-800 hover:border-red-500/30 transition-all cursor-pointer flex items-start gap-3.5 group">
-                                <div class="size-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 shrink-0 group-hover:scale-105 transition-transform mt-0.5">
-                                    <span class="material-symbols-outlined !text-lg">warning</span>
-                                </div>
-                                <div class="space-y-1 flex-1 min-w-0">
-                                    <div class="flex justify-between items-center gap-2">
-                                        <span class="text-xs font-extrabold uppercase tracking-wide text-red-400">
-                                            {{ str_replace('_', ' ', $detection['error_type']) }}
-                                        </span>
-                                        <span class="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                                            {{ sprintf('%02d:%02d', floor($detection['timestamp'] / 60), $detection['timestamp'] % 60) }}s
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-slate-300 font-medium leading-relaxed">{{ $detection['description'] }}</p>
-                                    <div class="flex items-center gap-1.5 pt-1">
-                                        <span class="text-[10px] text-slate-500">Confianza:</span>
-                                        <span class="text-[10px] font-bold text-slate-400">{{ round($detection['confidence'] * 100) }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    @else
-                        <!-- No Detections (Perfect quality!) -->
-                        <div class="p-8 text-center bg-emerald-500/5 rounded-xl border border-emerald-500/10 text-emerald-400">
-                            <span class="material-symbols-outlined !text-4xl mb-2">verified</span>
-                            <h4 class="font-bold text-sm text-white mb-1">¡Salida Perfecta!</h4>
-                            <p class="text-xs text-slate-400">No se detectó ningún error de envoltura, rotura u obstrucción en este lote.</p>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Export Report Button -->
-                <button onclick="showToast('Informe exportado en PDF (Simulado)', 'success')" 
-                        class="w-full flex items-center justify-center gap-2 rounded-xl h-12 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700/50">
-                    <span class="material-symbols-outlined !text-sm">download</span>
-                    <span>Descargar Informe de Calidad</span>
-                </button>
             </div>
         </div>
     </main>
@@ -195,37 +216,322 @@
     <!-- Footer -->
     <footer class="px-6 py-8 mt-auto border-t border-slate-200 dark:border-slate-800 text-center">
         <p class="text-xs text-slate-500">
-            © 2026 SpeedVision AI. Control de calidad de tacos con aprendizaje automático.
+            Análisis biomecánico de salidas de tacos con inteligencia artificial.
         </p>
     </footer>
 @endsection
 
 @section('scripts')
 <script>
-    // Variable global del video player
+    // ------------------------------------------------------------------
+    // Estado inicial (renderizado del lado servidor) y utilidades del
+    // reproductor de vídeo. El renderizado de resultados (completado o
+    // rechazado) usa SIEMPRE las mismas funciones tanto si la página
+    // carga ya terminada como si termina mientras el usuario espera
+    // (polling) — una sola implementación, no dos copias divergentes.
+    // ------------------------------------------------------------------
     const player = document.getElementById('taco-video');
-    const isCurrentlyProcessing = {{ in_array($video->status, ['pending', 'processing']) ? 'true' : 'false' }};
     const videoId = {{ $video->id }};
+    const isCurrentlyProcessing = {{ in_array($video->status, ['pending', 'processing']) ? 'true' : 'false' }};
     let pollingInterval = null;
 
-    // Control del Reproductor
+    const initialData = {
+        status: @json($video->status),
+        result_data: @json($video->result_data),
+        error_message: @json($video->error_message),
+        file_path: @json($video->file_path),
+    };
+
+    function togglePlay() {
+        if (!player) return;
+        const playIcon = document.getElementById('play-icon');
+        if (player.paused || player.ended) {
+            player.play();
+            if (playIcon) playIcon.textContent = 'pause_circle';
+        } else {
+            player.pause();
+            if (playIcon) playIcon.textContent = 'play_circle';
+        }
+    }
+
     function seekTo(seconds) {
         if (player) {
             player.currentTime = seconds;
             player.play();
-            player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            showToast(`Saltando al segundo ${seconds}s`, 'success');
         }
     }
 
-    // Iniciar Polling si está en cola o procesando
-    if (isCurrentlyProcessing) {
-        startProgressPolling();
+    function skipTime(delta) {
+        if (!player) return;
+        player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + delta));
+        updateTimeline();
     }
 
+    function changeSpeed(speed) {
+        if (!player) return;
+        player.playbackRate = parseFloat(speed);
+    }
+
+    function toggleMute() {
+        if (!player) return;
+        const volIcon = document.getElementById('volume-btn').querySelector('.material-symbols-outlined');
+        player.muted = !player.muted;
+        if (volIcon) volIcon.textContent = player.muted ? 'volume_off' : 'volume_up';
+    }
+
+    function toggleFullscreen() {
+        if (!player) return;
+        if (player.requestFullscreen) player.requestFullscreen();
+    }
+
+    function updateTimeline() {
+        if (player && player.duration) {
+            const progressPercent = (player.currentTime / player.duration) * 100;
+            document.getElementById('timeline-slider').value = progressPercent;
+            document.getElementById('timeline-progress').style.width = progressPercent + '%';
+            document.getElementById('video-time').textContent = player.currentTime.toFixed(2) + 's / ' + player.duration.toFixed(2) + 's';
+        }
+    }
+
+    if (player) {
+        player.addEventListener('play', () => {
+            const playIcon = document.getElementById('play-icon');
+            if (playIcon) playIcon.textContent = 'pause_circle';
+            const speedSelector = document.getElementById('speed-selector');
+            if (speedSelector) player.playbackRate = parseFloat(speedSelector.value);
+        });
+        player.addEventListener('pause', () => {
+            const playIcon = document.getElementById('play-icon');
+            if (playIcon) playIcon.textContent = 'play_circle';
+        });
+        player.addEventListener('timeupdate', updateTimeline);
+        player.addEventListener('loadedmetadata', () => {
+            document.getElementById('video-time').textContent = '0.00s / ' + player.duration.toFixed(2) + 's';
+            renderHotspots((initialData.result_data && initialData.result_data.zancadas) || []);
+        });
+        const timelineSlider = document.getElementById('timeline-slider');
+        if (timelineSlider) {
+            timelineSlider.addEventListener('input', () => {
+                if (player.duration) player.currentTime = (parseFloat(timelineSlider.value) / 100) * player.duration;
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Renderizado de resultados a partir del contrato real de
+    // analizar_salida.py (entrenador/core): nada de esto se inventa aquí,
+    // solo se muestra lo que el análisis calculó.
+    // ------------------------------------------------------------------
+    function fpsEfectivo(resultData) {
+        return (resultData && resultData.fps_efectivo) || 30;
+    }
+
+    function situacionInfo(situacion) {
+        if (situacion === 'dentro') return { label: 'dentro del rango de referencia', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' };
+        if (situacion === 'por_encima') return { label: 'por encima del rango de referencia', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-400' };
+        if (situacion === 'por_debajo') return { label: 'por debajo del rango de referencia', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-400' };
+        return { label: 'sin rango de referencia todavía', cls: 'border-slate-600/40 bg-slate-700/20 text-slate-400' };
+    }
+
+    function renderHotspots(zancadas) {
+        const cont = document.getElementById('timeline-hotspots-container');
+        if (!cont || !player || !player.duration || !zancadas.length) return;
+        const fps = fpsEfectivo(initialData.result_data);
+        cont.innerHTML = '';
+        zancadas.forEach(z => {
+            const t = z.frame_contacto / fps;
+            const pct = Math.min(100, Math.max(0, (t / player.duration) * 100));
+            const mark = document.createElement('div');
+            mark.className = 'absolute top-0 bottom-0 w-0.5 bg-primary/70';
+            mark.style.left = pct + '%';
+            mark.title = `Zancada ${z.n_zancada} (${z.pie}) — contacto a los ${t.toFixed(2)}s`;
+            cont.appendChild(mark);
+        });
+    }
+
+    function renderZancadasNav(zancadas) {
+        const nav = document.getElementById('zancadas-nav');
+        if (!nav) return;
+        nav.innerHTML = '';
+        zancadas.forEach((z, i) => {
+            const btn = document.createElement('button');
+            btn.dataset.index = i;
+            btn.className = claseBotonZancada(i === 0);
+            btn.textContent = `Zancada ${z.n_zancada} (${z.pie === 'izq' ? 'izq.' : 'der.'})`;
+            btn.onclick = () => seleccionarZancada(zancadas, i);
+            nav.appendChild(btn);
+        });
+        if (zancadas.length) seleccionarZancada(zancadas, 0);
+    }
+
+    function claseBotonZancada(activa) {
+        return 'px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ' +
+            (activa ? 'bg-primary text-white border-primary' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-primary/50');
+    }
+
+    function seleccionarZancada(zancadas, indice) {
+        document.querySelectorAll('#zancadas-nav button').forEach((btn, i) => {
+            btn.className = claseBotonZancada(i === indice);
+        });
+        const zancada = zancadas[indice];
+        if (player) {
+            seekTo(zancada.frame_contacto / fpsEfectivo(initialData.result_data));
+        }
+        renderEvidenciaZancada(zancada);
+    }
+
+    function renderEvidenciaZancada(zancada) {
+        const cont = document.getElementById('zancada-evidencia');
+        if (!cont || !zancada) return;
+
+        let html = '';
+        const modeloDisponible = initialData.result_data && initialData.result_data.modelo_disponible;
+
+        if (zancada.predicciones && zancada.predicciones.length > 0) {
+            html += '<div class="space-y-3 mb-5">';
+            zancada.predicciones.forEach(pred => {
+                const esSi = pred.prediccion === 1;
+                const esNoConcluyente = pred.prediccion === -1;
+                const cls = esSi ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                    : (esNoConcluyente ? 'bg-slate-700/30 border-slate-600/40 text-slate-300' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400');
+                const icon = esSi ? 'report' : (esNoConcluyente ? 'help' : 'check_circle');
+                html += `
+                    <div class="p-4 rounded-xl border ${cls} flex items-start gap-3">
+                        <span class="material-symbols-outlined text-lg shrink-0">${icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center gap-2 flex-wrap">
+                                <span class="text-xs font-black uppercase tracking-wide">${pred.nombre}</span>
+                                <span class="text-[10px] font-bold text-slate-300 bg-slate-950 px-2 py-0.5 rounded-full border border-white/5">${pred.texto} · confianza ${Math.round(pred.probabilidad * 100)}%</span>
+                            </div>
+                            ${pred.descripcion ? `<p class="text-xs text-slate-300 font-medium leading-relaxed mt-1.5">${pred.descripcion}</p>` : ''}
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+        } else if (!modeloDisponible) {
+            html += `
+                <div class="p-4 rounded-xl border border-slate-700/40 bg-slate-800/40 text-slate-300 text-xs mb-5">
+                    El modelo de clasificación de errores todavía no está entrenado. A continuación tienes el análisis
+                    biomecánico detallado de esta zancada — es la misma evidencia que usará el modelo en cuanto esté disponible.
+                </div>`;
+        }
+
+        const variables = zancada.variables || {};
+        const nombresVariables = Object.keys(variables);
+        if (nombresVariables.length > 0) {
+            html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
+            nombresVariables.forEach(nombreVar => {
+                const v = variables[nombreVar];
+                const info = situacionInfo(v.situacion);
+                const valorTexto = (v.valor === null || v.valor === undefined) ? '—' : v.valor.toFixed(2);
+                html += `
+                    <div class="p-3 rounded-lg border ${info.cls}">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">${v.nombre_legible}</p>
+                        <p class="text-sm font-black text-white mt-0.5">${valorTexto} <span class="text-[10px] font-medium text-slate-400">${v.unidad || ''}</span></p>
+                        <p class="text-[10px] mt-1 font-semibold">${info.label}</p>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+
+        cont.innerHTML = html || '<p class="text-sm text-slate-500">Sin variables calculadas para esta zancada.</p>';
+    }
+
+    function renderResumen(resultData) {
+        const cont = document.getElementById('resumen-analisis');
+        if (!cont) return;
+        const modelo = resultData.modelo_disponible;
+        let html = `
+            <div class="p-4 rounded-xl bg-slate-900/40 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Zancadas analizadas</p>
+                    <p class="text-2xl font-black text-white mt-1">${resultData.n_zancadas ?? 0}</p>
+                </div>
+                <span class="material-symbols-outlined text-slate-500">directions_walk</span>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/40 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Clasificación de errores</p>
+                    <p class="text-sm font-bold ${modelo ? 'text-emerald-400' : 'text-amber-400'} mt-1">${modelo ? 'Modelo activo' : 'Todavía no entrenado'}</p>
+                </div>
+                <span class="material-symbols-outlined ${modelo ? 'text-emerald-400' : 'text-amber-400'}">${modelo ? 'verified' : 'hourglass_empty'}</span>
+            </div>`;
+        if (resultData.atleta_calibracion) {
+            html += `<p class="text-[10px] text-slate-500">Umbrales calibrados dejando fuera a "${resultData.atleta_calibracion}".</p>`;
+        }
+        const avisos = (resultData.quality && resultData.quality.avisos) || [];
+        if (avisos.length) {
+            html += `<div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] space-y-1">
+                ${avisos.map(a => `<p>⚠ ${a}</p>`).join('')}
+            </div>`;
+        }
+        cont.innerHTML = html;
+    }
+
+    function renderLongitudZancada(zancadas) {
+        const cont = document.getElementById('longitud-zancada-chart');
+        if (!cont) return;
+        cont.innerHTML = '';
+        const valores = zancadas.map(z => {
+            const v = z.variables && z.variables['longitud_zancada'];
+            return (v && v.valor !== null && v.valor !== undefined) ? v.valor : 0;
+        });
+        const max = Math.max(...valores, 0.01);
+        valores.forEach((v, i) => {
+            const bar = document.createElement('div');
+            bar.className = 'w-full bg-primary/50 hover:bg-primary/70 transition-colors rounded-t';
+            bar.style.height = Math.max(4, (v / max) * 100) + '%';
+            bar.title = `Zancada ${zancadas[i].n_zancada}: ${v.toFixed(2)}`;
+            cont.appendChild(bar);
+        });
+    }
+
+    function renderResultadoCompleto(resultData, filePath) {
+        document.getElementById('processing-view')?.classList.add('hidden');
+        document.getElementById('failed-view')?.classList.add('hidden');
+        document.getElementById('completed-view')?.classList.remove('hidden');
+
+        if (player && filePath) {
+            const src = filePath.startsWith('/') ? filePath : '/' + filePath;
+            const sourceEl = player.querySelector('source');
+            if (sourceEl) sourceEl.src = src;
+            player.load();
+        }
+        const downloadVideoBtn = document.getElementById('download-video-btn');
+        if (downloadVideoBtn && filePath) {
+            downloadVideoBtn.href = filePath.startsWith('/') ? filePath : '/' + filePath;
+            downloadVideoBtn.classList.remove('hidden');
+        }
+        document.getElementById('download-report-btn')?.classList.remove('hidden');
+
+        renderResumen(resultData);
+        renderLongitudZancada(resultData.zancadas || []);
+        renderZancadasNav(resultData.zancadas || []);
+    }
+
+    function mostrarRechazoOFallo(errorMessage, resultData) {
+        document.getElementById('processing-view')?.classList.add('hidden');
+        document.getElementById('completed-view')?.classList.add('hidden');
+        document.getElementById('failed-view')?.classList.remove('hidden');
+
+        const motivos = (resultData && resultData.quality && resultData.quality.motivos) || [];
+        const titulo = document.getElementById('failed-title');
+        const cont = document.getElementById('error-message-text');
+        if (titulo) titulo.textContent = motivos.length ? 'Vídeo rechazado por la puerta de calidad' : 'Error en el análisis biomecánico';
+        if (cont) {
+            if (motivos.length) {
+                cont.innerHTML = '<ul class="list-disc list-inside space-y-1">' + motivos.map(m => `<li>${m}</li>`).join('') + '</ul>';
+            } else {
+                cont.innerHTML = `<p>${errorMessage || 'El análisis no ha podido completarse.'}</p>`;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Polling de progreso mientras el análisis está en cola/procesando
+    // ------------------------------------------------------------------
     function startProgressPolling() {
-        console.log("Iniciando telemetría de cola por Polling...");
-        pollingInterval = setInterval(fetchProgress, 1000); // Consulta cada 1 segundo
+        pollingInterval = setInterval(fetchProgress, 1000);
     }
 
     function fetchProgress() {
@@ -234,193 +540,53 @@
             .then(data => {
                 if (data.error) {
                     clearInterval(pollingInterval);
-                    showToast('Error en telemetría.', 'error');
                     return;
                 }
 
-                console.log("Telemetry update:", data);
-
-                // Actualizar barra de progreso
                 const progressBar = document.getElementById('analysis-progress-bar');
                 const progressValText = document.getElementById('progress-value-text');
                 const progressStatusText = document.getElementById('progress-status-text');
+                if (progressBar) progressBar.style.width = data.progress + '%';
+                if (progressValText) progressValText.textContent = data.progress + '%';
 
-                progressBar.style.width = data.progress + '%';
-                progressValText.textContent = data.progress + '%';
-
-                // Cambiar textos según el estado
                 if (data.status === 'processing') {
-                    progressStatusText.textContent = `Analizando fotogramas... (${data.progress}%)`;
+                    if (progressStatusText) progressStatusText.textContent = `Analizando fotogramas... (${data.progress}%)`;
                     document.getElementById('status-badge-container').innerHTML = `
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            <span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span> Analizando...
-                        </span>
-                    `;
+                        <span class="flex items-center gap-1 animate-pulse text-amber-400">
+                            <span class="material-symbols-outlined !text-sm text-amber-400">sync</span> Procesando Cinemática...
+                        </span>`;
                 }
 
-                // Si ha finalizado
                 if (data.status === 'completed') {
                     clearInterval(pollingInterval);
-                    showToast('¡Análisis completado con éxito!', 'success');
-                    
-                    // Actualizar UI completa
-                    updateUIAfterCompletion(data);
+                    initialData.result_data = data.result_data;
+                    initialData.file_path = data.file_path;
+                    document.getElementById('status-badge-container').innerHTML = `
+                        <span class="flex items-center gap-1"><span class="material-symbols-outlined !text-sm text-emerald-400">verified</span> Análisis Biomecánico Listo</span>`;
+                    renderResultadoCompleto(data.result_data, data.file_path);
                 }
 
-                // Si ha fallado
                 if (data.status === 'failed') {
                     clearInterval(pollingInterval);
-                    showToast('El análisis ha fallado.', 'error');
-                    
-                    document.getElementById('processing-view').classList.add('hidden');
-                    document.getElementById('failed-view').classList.remove('hidden');
-                    document.getElementById('error-message-text').textContent = data.error_message || 'Fallo de script de Python.';
+                    initialData.result_data = data.result_data;
                     document.getElementById('status-badge-container').innerHTML = `
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                            <span class="size-1.5 rounded-full bg-red-400"></span> Fallo de análisis
-                        </span>
-                    `;
+                        <span class="flex items-center gap-1 text-red-400"><span class="material-symbols-outlined !text-sm text-red-400">report_problem</span> Fallo en Análisis</span>`;
+                    mostrarRechazoOFallo(data.error_message, data.result_data);
                 }
             })
-            .catch(err => {
-                console.error("Telemetry error:", err);
-            });
+            .catch(err => console.error("Telemetry error:", err));
     }
 
-    // Actualizar dinámicamente toda la vista de análisis una vez finalizado el Job de cola
-    function updateUIAfterCompletion(data) {
-        // 1. Ocultar progreso
-        document.getElementById('processing-view').classList.add('hidden');
-        
-        // 2. Cargar Badge de Completado
-        document.getElementById('status-badge-container').innerHTML = `
-            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span class="size-1.5 rounded-full bg-emerald-400"></span> Completado
-            </span>
-        `;
-
-        // 3. Rellenar Métricas
-        const metrics = data.result_data || {};
-        document.getElementById('metric-analyzed').textContent = metrics.tacos_analyzed || 0;
-        document.getElementById('metric-confidence').textContent = (metrics.accuracy || 0) + '%';
-        
-        const errorCount = metrics.detections_count ?? 0;
-        document.getElementById('error-badge-count').textContent = errorCount;
-        
-        const accuracyText = document.getElementById('metric-accuracy');
-        if (metrics.tacos_analyzed > 0) {
-            const accRate = Math.round(((metrics.tacos_analyzed - errorCount) / metrics.tacos_analyzed) * 100 * 10) / 10;
-            accuracyText.textContent = accRate + '%';
-        } else {
-            accuracyText.textContent = '100%';
-        }
-
-        // 4. Cargar Línea de Tiempo de errores
-        const timeline = document.getElementById('timeline-container');
-        timeline.innerHTML = ''; // Limpiar
-
-        if (metrics.detections && metrics.detections.length > 0) {
-            metrics.detections.forEach(detection => {
-                const min = Math.floor(detection.timestamp / 60);
-                const sec = Math.floor(detection.timestamp % 60);
-                const timeString = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-                
-                const card = document.createElement('div');
-                card.onclick = () => seekTo(detection.timestamp);
-                card.className = "p-4 bg-slate-900/50 hover:bg-slate-900 rounded-xl border border-slate-800 hover:border-red-500/30 transition-all cursor-pointer flex items-start gap-3.5 group";
-                card.innerHTML = `
-                    <div class="size-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 shrink-0 group-hover:scale-105 transition-transform mt-0.5">
-                        <span class="material-symbols-outlined !text-lg">warning</span>
-                    </div>
-                    <div class="space-y-1 flex-1 min-w-0">
-                        <div class="flex justify-between items-center gap-2">
-                            <span class="text-xs font-extrabold uppercase tracking-wide text-red-400">
-                                ${detection.error_type.replace('_', ' ')}
-                            </span>
-                            <span class="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                                ${timeString}s
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-300 font-medium leading-relaxed">${detection.description}</p>
-                        <div class="flex items-center gap-1.5 pt-1">
-                            <span class="text-[10px] text-slate-500">Confianza:</span>
-                            <span class="text-[10px] font-bold text-slate-400">${Math.round(detection.confidence * 100)}%</span>
-                        </div>
-                    </div>
-                `;
-                timeline.appendChild(card);
-            });
-        } else {
-            timeline.innerHTML = `
-                <div class="p-8 text-center bg-emerald-500/5 rounded-xl border border-emerald-500/10 text-emerald-400">
-                    <span class="material-symbols-outlined !text-4xl mb-2">verified</span>
-                    <h4 class="font-bold text-sm text-white mb-1">¡Salida Perfecta!</h4>
-                    <p class="text-xs text-slate-400">No se detectó ningún error de envoltura, rotura u obstrucción en este lote.</p>
-                </div>
-            `;
-        }
-
-        // 5. Recargar Source de Video
-        if (player) {
-            player.load();
-        }
-
-        // 6. Mostrar el contenedor completado
-        document.getElementById('completed-view').classList.remove('hidden');
+    // ------------------------------------------------------------------
+    // Inicialización
+    // ------------------------------------------------------------------
+    if (initialData.status === 'completed') {
+        renderResultadoCompleto(initialData.result_data, initialData.file_path);
+    } else if (initialData.status === 'failed') {
+        mostrarRechazoOFallo(initialData.error_message, initialData.result_data);
     }
-
-    /*
-     * =========================================================================
-     *  INTEGRACIÓN FUTURA DE WEBSOCKETS (Laravel Echo)
-     * =========================================================================
-     * Cuando configures Laravel Reverb o Pusher, puedes eliminar el Polling
-     * y sustituirlo por el siguiente bloque de código.
-     *
-     * 1. Asegúrate de instalar Laravel Echo y Pusher JS:
-     *    npm install --save-dev laravel-echo pusher-js
-     *
-     * 2. Descomenta el siguiente código en tu script:
-     *
-     * import Echo from 'laravel-echo';
-     * window.Pusher = require('pusher-js');
-     *
-     * window.Echo = new Echo({
-     *     broadcaster: 'reverb', // o 'pusher'
-     *     key: import.meta.env.VITE_REVERB_APP_KEY,
-     *     wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
-     *     wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-     *     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-     *     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-     *     enabledTransports: ['ws', 'wss'],
-     * });
-     *
-     * // Suscribirse al canal público de difusión del video
-     * window.Echo.channel(`video.${videoId}`)
-     *     .listen('VideoProgressUpdated', (e) => {
-     *         console.log("WebSocket Recibido:", e);
-     *
-     *         // Si detecta progreso, actualiza la barra
-     *         const progressBar = document.getElementById('analysis-progress-bar');
-     *         const progressValText = document.getElementById('progress-value-text');
-     *         const progressStatusText = document.getElementById('progress-status-text');
-     *
-     *         progressBar.style.width = e.progress + '%';
-     *         progressValText.textContent = e.progress + '%';
-     *
-     *         if (e.status === 'processing') {
-     *             progressStatusText.textContent = `Analizando fotogramas... (${e.progress}%)`;
-     *         }
-     *
-     *         if (e.status === 'completed') {
-     *             showToast('¡Análisis completado mediante WebSockets!', 'success');
-     *             updateUIAfterCompletion(e);
-     *         }
-     *
-     *         if (e.status === 'failed') {
-     *             showToast('Fallo recibido por WebSockets.', 'error');
-     *             // Manejo del estado fallido...
-     *         }
-     *     });
-     */
+    if (isCurrentlyProcessing) {
+        startProgressPolling();
+    }
 </script>
 @endsection
