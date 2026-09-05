@@ -20,7 +20,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/import', [VideoController::class, 'import'])->name('videos.import');
     Route::post('/upload', [VideoController::class, 'store'])->name('videos.store');
     Route::get('/videos/{id}', [VideoController::class, 'show'])->name('videos.show');
-    
+    Route::get('/videos/{id}/report', [VideoController::class, 'report'])->name('videos.report');
+    Route::get('/videos/{id}/report/pdf', [VideoController::class, 'reportPdf'])->name('videos.report.pdf');
+
     // Endpoint para el Polling de progreso desde el frontend
     Route::get('/api/videos/{id}/progress', [VideoController::class, 'progressApi'])->name('videos.progress');
 });
