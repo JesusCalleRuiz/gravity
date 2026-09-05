@@ -316,12 +316,35 @@
         })
         .catch(error => {
             console.error(error);
-            showToast('Error al subir el video. Inténtalo de nuevo.', 'error');
+            showToast(mensajeErrorSubida(error), 'error');
             submitBtn.removeAttribute('disabled');
             submitBtn.classList.remove('opacity-50');
             dropZone.style.pointerEvents = 'auto';
             progressCard.classList.add('hidden');
         });
+
+        function mensajeErrorSubida(error) {
+            const status = error.response?.status;
+            // Un vídeo entre post_max_size y upload_max_filesize (ver php.ini)
+            // hace que PHP vacíe $_POST antes de que Laravel valide nada: el
+            // servidor responde como si faltaran los campos (422) o corta la
+            // conexión (sin response) en vez de decir "el archivo es demasiado
+            // grande" — el mensaje genérico anterior no daba ninguna pista.
+            if (status === 413) {
+                return 'El vídeo es demasiado grande para el servidor. Prueba con un archivo más pequeño.';
+            }
+            if (!error.response) {
+                return 'Se ha perdido la conexión durante la subida (puede deberse a que el vídeo es demasiado grande). Inténtalo de nuevo con un archivo más pequeño.';
+            }
+            const errores = error.response.data?.errors;
+            if (errores) {
+                return Object.values(errores).flat().join(' ');
+            }
+            if (error.response.data?.message) {
+                return error.response.data.message;
+            }
+            return 'Error al subir el video. Inténtalo de nuevo.';
+        }
     });
 </script>
 @endsection
