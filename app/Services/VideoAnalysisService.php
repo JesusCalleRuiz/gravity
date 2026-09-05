@@ -10,78 +10,7 @@ class VideoAnalysisService
 {
     public function analyze(Video $video): void
     {
-        if (env('SIMULATE_ANALYSIS', true)) {
-            $this->runSimulation($video);
-        } else {
-            $this->runPythonAnalysis($video);
-        }
-    }
-
-    /**
-     * Run simulated analysis for development / demo purposes.
-     */
-    protected function runSimulation(Video $video): void
-    {
-        Log::info("Starting taco error analysis SIMULATION on video ID: {$video->id}");
-
-        $video->update([
-            'status' => 'processing',
-            'progress' => 0,
-        ]);
-
-        $this->broadcastProgress($video);
-
-        for ($i = 10; $i <= 100; $i += 10) {
-            sleep(1); 
-
-            $video->update([
-                'progress' => $i,
-            ]);
-
-            $this->broadcastProgress($video);
-
-            Log::info("Video ID {$video->id} simulation progress: {$i}%");
-        }
-
-        $simulatedDetections = [
-            [
-                'timestamp' => 1.5,
-                'error_type' => 'mal_enrollado',
-                'description' => 'Taco mal enrollado o abierto en el extremo izquierdo.',
-                'confidence' => 0.94,
-                'bounding_box' => ['x' => 120, 'y' => 240, 'width' => 80, 'height' => 60]
-            ],
-            [
-                'timestamp' => 3.2,
-                'error_type' => 'rotura',
-                'description' => 'Corte o rotura de la masa del taco durante la salida.',
-                'confidence' => 0.88,
-                'bounding_box' => ['x' => 310, 'y' => 242, 'width' => 75, 'height' => 58]
-            ],
-            [
-                'timestamp' => 5.8,
-                'error_type' => 'obstruccion',
-                'description' => 'Acumulación/obstrucción en la rampa de caída.',
-                'confidence' => 0.97,
-                'bounding_box' => ['x' => 540, 'y' => 250, 'width' => 110, 'height' => 90]
-            ],
-        ];
-
-        $video->update([
-            'status' => 'completed',
-            'progress' => 100,
-            'result_data' => [
-                'detections_count' => count($simulatedDetections),
-                'detections' => $simulatedDetections,
-                'duration_seconds' => 8.4,
-                'tacos_analyzed' => 14,
-                'accuracy' => 96.5,
-            ]
-        ]);
-
-        $this->broadcastProgress($video);
-
-        Log::info("Taco analysis simulation completed successfully for video ID: {$video->id}");
+        $this->runPythonAnalysis($video);
     }
 
     /**
@@ -99,51 +28,130 @@ class VideoAnalysisService
         $this->broadcastProgress($video);
 
         $videoPath = public_path($video->file_path);
-        $pythonScript = base_path('python/analyze_tacos.py');
+        $pythonScript = base_path('python/analizar_salida.py');
 
         if (!file_exists($pythonScript)) {
             throw new \Exception("Script de Python no encontrado en: {$pythonScript}");
         }
 
-        // Ejecutar el script real de Python usando Symfony Process
-        $process = new \Symfony\Component\Process\Process([
-            'python', 
-            $pythonScript, 
-            '--video', 
-            $videoPath
-        ]);
-        
-        // Timeout de 10 minutos para videos grandes
-        $process->setTimeout(600);
-        $process->start();
-        
-        foreach ($process as $type => $data) {
-            if ($process::OUT === $type) {
-                // Si el script escribe PROGRESS:X, actualizamos
-                if (preg_match('/PROGRESS:(\d+)/', $data, $matches)) {
-                    $progress = (int)$matches[1];
-                    $video->update(['progress' => $progress]);
-                    $this->broadcastProgress($video);
-                }
-            }
+        // Detectar Python portable o estándar del sistema
+        $pythonBinary = 'python';
+        if (file_exists('C:/APPS/python-3.11.1-embed-amd64/python.exe')) {
+            $pythonBinary = 'C:/APPS/python-3.11.1-embed-amd64/python.exe';
         }
-        
-        if ($process->isSuccessful()) {
-            $output = json_decode($process->getOutput(), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("Salida de Python no es un JSON válido: " . $process->getOutput());
-            }
 
-            $video->update([
-                'status' => 'completed',
-                'progress' => 100,
-                'result_data' => $output
+        try {
+            // Ejecutar el script real de Python usando Symfony Process
+            $process = new \Symfony\Component\Process\Process([
+                $pythonBinary, 
+                $pythonScript, 
+                '--video', 
+                $videoPath
             ]);
             
+            // Timeout de 10 minutos para videos grandes
+            $process->setTimeout(600);
+            // Acumular stdout y stderr manualmente: getOutput() puede devolver vacío
+            // si el iterador foreach ya consumió el stream
+            $rawOutput = '';
+            $errOutput  = '';
+            $process->start();
+            foreach ($process as $type => $data) {
+                if ($process::OUT === $type) {
+                    $rawOutput .= $data;
+                    if (preg_match('/PROGRESS:(\d+)/', $data, $matches)) {
+                        $progress = (int)$matches[1];
+                        $video->update(['progress' => $progress]);
+                        $this->broadcastProgress($video);
+                    }
+                } else {
+                    $errOutput .= $data;
+                }
+            }
+
+
+            // Buscar el JSON válido en stdout independientemente del exit code
+            // (TensorFlow Lite escribe a stderr causando exit code 1 aunque el análisis sea correcto)
+            $lines = array_reverse(explode("\n", $rawOutput));
+            $output = null;
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '' || $line[0] !== '{') {
+                    continue;
+                }
+                $decoded = json_decode($line, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($decoded['status'])) {
+                    $output = $decoded;
+                    break;
+                }
+            }
+
+            if ($output === null) {
+                Log::error("Python STDOUT para video ID {$video->id}:\n" . $rawOutput);
+                Log::error("Python STDERR para video ID {$video->id}:\n" . $errOutput);
+                throw new \Exception("Error en Python. STDERR: " . substr($errOutput, 0, 500));
+            }
+
+            // Manejar estado fallido devuelto de forma controlada en el JSON
+            if (isset($output['status']) && $output['status'] === 'failed') {
+                $video->update([
+                    'status' => 'failed',
+                    'progress' => 100,
+                    'error_message' => $output['error_message'] ?? 'Error desconocido en el análisis biomecánico.'
+                ]);
+                $this->broadcastProgress($video);
+                return;
+            }
+
+            // La puerta de calidad puede rechazar el vídeo con motivos concretos
+            // (encuadre, nº de zancadas, etc.) en vez de un fallo técnico. La
+            // vista actual todavía no distingue 'rejected' de 'failed' (eso es
+            // la fase de pantalla de rechazo, pendiente) — de momento se mapea
+            // a 'failed' para no romper la vista, pero el motivo real (no un
+            // mensaje genérico) va en error_message, y el detalle completo de
+            // 'quality' queda en result_data para cuando exista esa pantalla.
+            if (isset($output['status']) && $output['status'] === 'rejected') {
+                $quality = $output['quality'] ?? [];
+                $motivos = $quality['motivos'] ?? [];
+                $video->update([
+                    'status' => 'failed',
+                    'progress' => 100,
+                    'error_message' => $motivos
+                        ? ('Vídeo rechazado por la puerta de calidad: ' . implode('; ', $motivos) . '.')
+                        : 'Vídeo rechazado por la puerta de calidad.',
+                    'result_data' => $output,
+                ]);
+                $this->broadcastProgress($video);
+                return;
+            }
+
+            // Ruta del vídeo anotado relativa a public/, en el mismo directorio
+            // que el original (mismo criterio que usaba analyze_tacos.py).
+            $processedRelativePath = null;
+            if (isset($output['processed_video_filename'])) {
+                $processedRelativePath = dirname($video->file_path) . '/' . $output['processed_video_filename'];
+                $output['original_file_path'] = $video->file_path;
+            }
+
+            $videoData = [
+                'status' => 'completed',
+                'progress' => 100,
+                'result_data' => $output,
+            ];
+            if ($processedRelativePath !== null) {
+                $videoData['file_path'] = $processedRelativePath;
+            }
+
+            $video->update($videoData);
             $this->broadcastProgress($video);
-        } else {
-            throw new \Exception("Error en script de Python: " . $process->getErrorOutput());
+        } catch (\Exception $e) {
+            Log::error("Fallo de análisis en video ID {$video->id}: " . $e->getMessage());
+            $video->update([
+                'status' => 'failed',
+                'progress' => 100,
+                'error_message' => $e->getMessage()
+            ]);
+            $this->broadcastProgress($video);
         }
     }
 
@@ -161,47 +169,4 @@ class VideoAnalysisService
         }
     }
 
-    /**
-     * FUTURE ROADMAP (Para integrar Python fácilmente):
-     *
-     * public function analyzeWithPython(Video $video): void
-     * {
-     *     $videoPath = storage_path('app/private/' . $video->file_path);
-     *     
-     *     // Ejecutar script de Python con Symfony Process
-     *     $process = new \Symfony\Component\Process\Process([
-     *         'python', 
-     *         base_path('python/analyze_tacos.py'), 
-     *         '--video', 
-     *         $videoPath
-     *     ]);
-     *     
-     *     $process->start();
-     *     
-     *     // Leer salida en tiempo real
-     *     foreach ($process as $type => $data) {
-     *         if ($process::OUT === $type) {
-     *             // Ej: El script de Python escupe "PROGRESS:45"
-     *             if (preg_match('/PROGRESS:(\d+)/', $data, $matches)) {
-     *                 $video->update(['progress' => (int)$matches[1]]);
-     *                 $this->broadcastProgress($video);
-     *             }
-     *         }
-     *     }
-     *     
-     *     // Al terminar, parsear el JSON de salida
-     *     if ($process->isSuccessful()) {
-     *         $output = json_decode($process->getOutput(), true);
-     *         $video->update([
-     *             'status' => 'completed',
-     *             'result_data' => $output
-     *         ]);
-     *     } else {
-     *         $video->update([
-     *             'status' => 'failed',
-     *             'error_message' => $process->getErrorOutput()
-     *         ]);
-     *     }
-     * }
-     */
 }
