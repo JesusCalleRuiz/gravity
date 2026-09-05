@@ -63,18 +63,24 @@ from core.modelos import predecir_con_abstencion  # noqa: E402
 # analyze_tacos.py). Queda como limitación conocida, no como omisión.
 # ---------------------------------------------------------------------------
 
-UMBRAL_BBOX_ALTO_ROJO = 0.20   # bbox del atleta por debajo del 20% del alto del frame -> rechazo
-UMBRAL_BBOX_ALTO_AMBAR = 0.35  # por debajo del 35% -> aviso, no rechazo
+UMBRAL_BBOX_ALTO_AMBAR = 0.35  # por debajo del 35% -> aviso, nunca rechazo (ver más abajo)
 
 
 def evaluar_encuadre(landmarks, alto_frame: int) -> dict:
     """
     Proporción mediana de la altura del bounding box del atleta respecto al
-    alto del frame, sobre los frames con detección. Sirve de proxy de
-    "atleta demasiado pequeño en el encuadre": no mide directamente el
-    encuadre del operador de cámara, pero si el atleta ocupa muy poco alto
-    de la imagen, MediaPipe también degrada su precisión sobre los mismos
-    frames, así que el efecto en la práctica es equivalente.
+    alto del frame, sobre los frames con detección.
+
+    Es solo un AVISO, nunca motivo de rechazo por sí solo: se pensó como
+    proxy de "atleta demasiado pequeño para que MediaPipe trackee bien", con
+    la idea de que un bbox pequeño implica peor detección. Comprobado con un
+    caso real (vídeo rechazado a 18.77%, por debajo del 20% que antes
+    rechazaba): la detección fue del 97.5% de los frames y la visibilidad
+    media de los landmarks del 86% — un tracking perfectamente bueno pese al
+    encuadre abierto (típico al grabar la salida completa de una carrera,
+    no un plano cercano). El proxy no se sostiene; el motivo de rechazo real
+    ya lo cubre core.calidad.evaluar_calidad_clip con el % de frames sin
+    detección, que sí mide la degradación directamente en vez de adivinarla.
     """
     detectados = landmarks[landmarks["deteccion"]]
     if detectados.empty or alto_frame <= 0:
@@ -99,13 +105,8 @@ def evaluar_calidad_produccion(clip: dict, ancho: int, alto: int, fps: float) ->
     avisos = []
 
     proporcion = encuadre.get("proporcion_bbox_alto_mediana")
-    if proporcion is not None:
-        if proporcion < UMBRAL_BBOX_ALTO_ROJO:
-            motivos_rojo.append(
-                f"el atleta ocupa solo el {proporcion:.0%} del alto del encuadre — acércate o encuadra de cuerpo completo"
-            )
-        elif proporcion < UMBRAL_BBOX_ALTO_AMBAR:
-            avisos.append(f"el atleta ocupa el {proporcion:.0%} del alto del encuadre — un encuadre más cercano mejora la precisión")
+    if proporcion is not None and proporcion < UMBRAL_BBOX_ALTO_AMBAR:
+        avisos.append(f"el atleta ocupa el {proporcion:.0%} del alto del encuadre — un encuadre más cercano mejora la precisión")
 
     # fps bajo: aviso, NO motivo de rechazo. El propio modelo se entrenó con
     # vídeo de YouTube a fps variable (ver limitaciones de entrenador), así
@@ -187,8 +188,10 @@ def analizar_zancada(
                 probabilidades.reshape(1, -1), bundle["umbrales"], margen=bundle["config"].get("margen_abstencion", 0.1)
             )[0]
             etiqueta_texto = {1: "SÍ", 0: "no", -1: "no concluyente"}
+            fiabilidad_por_clase = bundle["config"].get("fiabilidad_por_clase", {})
             for id_etiqueta, prob, pred in zip(bundle["ids_etiquetas"], probabilidades, predicciones):
                 info_error = catalogo_por_id.get(id_etiqueta, {})
+                info_fiabilidad = fiabilidad_por_clase.get(id_etiqueta, {})
                 predicciones_json.append(
                     {
                         "id_etiqueta": id_etiqueta,
@@ -197,6 +200,14 @@ def analizar_zancada(
                         "probabilidad": float(prob),
                         "prediccion": int(pred),
                         "texto": etiqueta_texto[int(pred)],
+                        # De core.experimentos.exportar_bundle_red_b: AUC de
+                        # esta clase sobre un atleta nunca entrenado. Con
+                        # datasets tan pequeños una clase puede no tener
+                        # señal real aunque el resto del sistema funcione, y
+                        # eso hay que decírselo a quien lee el informe, no
+                        # solo confiar en que el umbral ya lo filtra.
+                        "fiable": info_fiabilidad.get("fiable"),
+                        "auc_calibracion": info_fiabilidad.get("auc_calibracion"),
                     }
                 )
         except ValueError:
@@ -297,9 +308,21 @@ def run_analysis(video_path: str) -> dict:
     log_progress(80)
     nombre_video_anotado = f"anotado_{Path(video_path).stem}.mp4"
     ruta_video_anotado = Path(video_path).parent / nombre_video_anotado
-    visualizacion.generar_video_anotado(video_path, landmarks, eventos, ruta_video_anotado, resultado_extraccion["fps_efectivo"])
+    visualizacion.generar_video_anotado(
+        video_path, landmarks, eventos, ruta_video_anotado, resultado_extraccion["fps_efectivo"],
+        zancadas_analizadas=zancadas_json,
+    )
 
     log_progress(100)
+    # Solo cuenta errores CONFIRMADOS (prediccion==1): un "no concluyente"
+    # (-1) no es un error detectado, y contarlo junto a los confirmados
+    # sería el mismo problema de honestidad que ya se corrigió en el PDF
+    # (core.feedback._figura_resumen_ejecutivo). Views/Controller de gravity
+    # leen esta clave tal cual para las tarjetas de vídeo.
+    detections_count = sum(
+        1 for zancada in zancadas_json for p in zancada.get("predicciones", []) if p["prediccion"] == 1
+    )
+
     return {
         "status": "completed",
         "quality": {k: v for k, v in reporte_calidad.items() if k != "sugerencia_camara_lenta"},
@@ -309,6 +332,7 @@ def run_analysis(video_path: str) -> dict:
         "atleta_calibracion": bundle["config"]["atleta_calibracion"] if bundle else None,
         "zancadas": zancadas_json,
         "processed_video_filename": nombre_video_anotado,
+        "detections_count": detections_count,
     }
 
 
@@ -317,5 +341,17 @@ if __name__ == "__main__":
     parser.add_argument("--video", type=str, required=True, help="Ruta al vídeo de entrada")
     args = parser.parse_args()
 
-    resultado = run_analysis(args.video)
+    try:
+        resultado = run_analysis(args.video)
+    except Exception as e:
+        # Frontera del sistema: de aquí para arriba solo hay JSON leído por
+        # VideoAnalysisService.php desde stdout. Un traceback crudo ahí
+        # rompe el parseo de json_decode (o, peor, se le muestra tal cual
+        # al usuario final). El traceback completo va a stderr para poder
+        # depurarlo sin filtrarlo a la UI.
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        resultado = {"status": "failed", "error_message": f"{type(e).__name__}: {e}"}
+
     print(json.dumps(resultado, ensure_ascii=False))
