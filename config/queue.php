@@ -40,7 +40,14 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Por encima de ProcessVideoJob::$timeout (900s): un análisis
+            // biomecánico real (MediaPipe + TensorFlow) fácilmente supera
+            // los 90s por defecto de Laravel, y con retry_after < timeout
+            // la cola da el job por abandonado y lo reencola mientras el
+            // primer worker sigue vivo, procesando el mismo vídeo dos veces
+            // en paralelo (comprobado: pisan el mismo result_data/vídeo
+            // anotado de forma inconsistente).
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1000),
             'after_commit' => false,
         ],
 
