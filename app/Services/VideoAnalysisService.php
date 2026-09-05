@@ -144,7 +144,10 @@ class VideoAnalysisService
 
             $video->update($videoData);
             $this->broadcastProgress($video);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // \Throwable: un Error/TypeError de PHP (p. ej. al leer una
+            // clave que $output no trae) no es un \Exception y antes se
+            // colaba sin marcar el vídeo como fallido.
             Log::error("Fallo de análisis en video ID {$video->id}: " . $e->getMessage());
             $video->update([
                 'status' => 'failed',
