@@ -24,7 +24,7 @@ os.environ.setdefault("MEDIAPIPE_DISABLE_GPU", "1")
 # que Laravel pueda decodificar el JSON sin que las tildes lo rompan.
 sys.stdout.reconfigure(encoding="utf-8")
 
-RUTA_ENTRENADOR = Path(r"C:\var\www\html\entrenador")
+RUTA_ENTRENADOR = Path(os.environ.get("RUTA_ENTRENADOR", r"C:\var\www\html\entrenador"))
 sys.path.insert(0, str(RUTA_ENTRENADOR))
 
 from core import config as core_config  # noqa: E402
