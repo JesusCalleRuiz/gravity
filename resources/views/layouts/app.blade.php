@@ -197,7 +197,7 @@
         </aside>
     @endauth
 
-    <div class="flex-1 flex flex-col min-h-screen overflow-y-auto bg-[#0b0f17]">
+    <div class="flex-1 flex flex-col min-h-screen overflow-y-auto bg-[#0b0f17] @yield('body-class')">
         @yield('content')
     </div>
 
