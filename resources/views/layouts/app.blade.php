@@ -171,6 +171,10 @@
                     <span class="material-symbols-outlined {{ Request::routeIs('videos.import') ? 'text-primary' : '' }} shrink-0">upload</span>
                     <span class="font-medium text-sm sidebar-text transition-all duration-300 whitespace-nowrap">Analizar Salida</span>
                 </a>
+                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ Request::routeIs('modelo-ia') ? 'text-primary bg-primary/10 dark:bg-primary/5 active-nav' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }} transition-all" href="{{ route('modelo-ia') }}" title="Cómo funciona la IA">
+                    <span class="material-symbols-outlined {{ Request::routeIs('modelo-ia') ? 'text-primary' : '' }} shrink-0">neurology</span>
+                    <span class="font-medium text-sm sidebar-text transition-all duration-300 whitespace-nowrap">Cómo funciona la IA</span>
+                </a>
             </nav>
 
             <!-- User Section -->
