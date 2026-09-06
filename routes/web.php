@@ -13,10 +13,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
-// Rutas Protegidas (Dashboard & Videos)
+// Logout: solo necesita 'auth', nunca 'active' — una cuenta pendiente de
+// activación tiene que poder cerrar sesión igualmente.
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
 
+// Rutas Protegidas (Dashboard & Videos): requieren cuenta activada.
+Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/', [VideoController::class, 'index'])->name('videos.index');
     Route::get('/import', [VideoController::class, 'import'])->name('videos.import');
     Route::post('/upload', [VideoController::class, 'store'])->name('videos.store');
