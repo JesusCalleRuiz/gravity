@@ -67,10 +67,7 @@ class GeneratePdfJob implements ShouldQueue
         File::delete($outputPdfPathProvisional);
         File::put($resultJsonPath, json_encode($this->video->result_data));
 
-        $pythonBinary = 'python';
-        if (file_exists('C:/APPS/python-3.11.1-embed-amd64/python.exe')) {
-            $pythonBinary = 'C:/APPS/python-3.11.1-embed-amd64/python.exe';
-        }
+        $pythonBinary = \App\Support\PythonRuntime::binario();
         $pythonScript = base_path('python/generar_pdf.py');
 
         $process = new \Symfony\Component\Process\Process([
@@ -80,6 +77,7 @@ class GeneratePdfJob implements ShouldQueue
             '--output', $outputPdfPathProvisional,
             '--titulo', $this->video->title,
         ]);
+        $process->setEnv(\App\Support\PythonRuntime::entornoProceso());
         $process->setTimeout(150);
         $process->run();
 
