@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ModeloIAController;
 
 // Rutas de Invitado (Auth)
 Route::middleware('guest')->group(function () {
@@ -22,6 +23,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/videos/{id}', [VideoController::class, 'show'])->name('videos.show');
     Route::get('/videos/{id}/report', [VideoController::class, 'report'])->name('videos.report');
     Route::get('/videos/{id}/report/pdf', [VideoController::class, 'reportPdf'])->name('videos.report.pdf');
+
+    Route::get('/modelo-ia', [ModeloIAController::class, 'index'])->name('modelo-ia');
 
     // Endpoint para el Polling de progreso desde el frontend
     Route::get('/api/videos/{id}/progress', [VideoController::class, 'progressApi'])->name('videos.progress');
