@@ -47,6 +47,33 @@
             </div>
         </div>
 
+        @if ($video->status === 'completed' && ($metrics['modelo_disponible'] ?? false))
+            <!-- Banner de IA: visible de inmediato (renderizado en servidor, no espera al JS) para que
+                 quede claro que ESTE vídeo se analizó con un modelo entrenado, no solo con cinemática. -->
+            <div class="mb-6 flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-purple-500/10 to-transparent border border-primary/30">
+                <div class="size-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined !text-2xl">neurology</span>
+                </div>
+                <div class="flex-1 min-w-[240px]">
+                    <p class="text-sm font-black text-white flex items-center gap-2">
+                        Analizado con Inteligencia Artificial
+                        <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">Red B · Conv1D+BiLSTM</span>
+                    </p>
+                    <p class="text-xs text-slate-300 mt-1">
+                        {{ $metrics['n_zancadas'] ?? 0 }} zancada(s) evaluadas por la red neuronal, validada con protocolo
+                        LOSO (Leave-One-Subject-Out)
+                        @if (!empty($metrics['atleta_calibracion']))
+                            y calibrada dejando fuera del entrenamiento a "{{ $metrics['atleta_calibracion'] }}"
+                        @endif
+                        . Cada zancada indica además qué fase del ciclo influyó más en el veredicto.
+                    </p>
+                </div>
+                <a href="{{ route('modelo-ia') }}" class="shrink-0 text-xs font-bold text-primary hover:text-white hover:bg-primary/20 transition-colors flex items-center gap-1 px-3 py-2 rounded-lg border border-primary/30">
+                    Cómo funciona <span class="material-symbols-outlined !text-sm">arrow_forward</span>
+                </a>
+            </div>
+        @endif
+
         <!-- 1. PANTALLA DE PROGRESO (Visible mientras se procesa) -->
         <div id="processing-view" class="{{ in_array($video->status, ['pending', 'processing']) ? '' : 'hidden' }} bg-[#1a2530] border border-slate-200/5 rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full my-8 shadow-2xl">
             <div class="relative size-24 mx-auto mb-6">
@@ -255,9 +282,14 @@
     }
 
     function seekTo(seconds) {
+        // Al seleccionar una zancada se quiere INSPECCIONAR ese instante
+        // (foto fija + evidencia debajo), no arrancar la reproducción desde
+        // ahí: con play() el vídeo seguía corriendo más allá de la zancada
+        // elegida, dando la sensación de que "vuelve a empezar" en vez de
+        // quedarse en el frame pedido.
         if (player) {
             player.currentTime = seconds;
-            player.play();
+            player.pause();
         }
     }
 
@@ -380,6 +412,26 @@
         renderEvidenciaZancada(zancada);
     }
 
+    // Interpretabilidad: por qué el modelo dijo esto, no solo qué dijo. El
+    // perfil (perfil_importancia_fase) viene de core.interpretabilidad
+    // (ablación por oclusión sobre cada tramo del 0-100% del ciclo,
+    // calculado en python/analizar_salida.py); se dibuja como un
+    // mini-sparkline con barras CSS, sin librería de gráficos.
+    function renderInterpretabilidadFase(pred) {
+        const perfil = pred.perfil_importancia_fase;
+        if (!perfil || !perfil.length) return '';
+        const barras = perfil.map(v => {
+            const alturaPct = Math.max(6, Math.round(v * 100));
+            return `<div class="flex-1 bg-current rounded-sm" style="height:${alturaPct}%; opacity:${0.25 + 0.75 * v}"></div>`;
+        }).join('');
+        return `
+            <div class="mt-2.5 pt-2.5 border-t border-white/10">
+                <p class="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Fase del ciclo que más influyó en el veredicto (IA)</p>
+                <div class="flex items-end gap-0.5 h-6">${barras}</div>
+                <p class="text-[10px] font-semibold mt-1">${pred.fase_mas_influyente_inicio}%–${pred.fase_mas_influyente_fin}% del ciclo</p>
+            </div>`;
+    }
+
     function renderEvidenciaZancada(zancada) {
         const cont = document.getElementById('zancada-evidencia');
         if (!cont || !zancada) return;
@@ -404,6 +456,7 @@
                                 <span class="text-[10px] font-bold text-slate-300 bg-slate-950 px-2 py-0.5 rounded-full border border-white/5">${pred.texto} · confianza ${Math.round(pred.probabilidad * 100)}%</span>
                             </div>
                             ${pred.descripcion ? `<p class="text-xs text-slate-300 font-medium leading-relaxed mt-1.5">${pred.descripcion}</p>` : ''}
+                            ${renderInterpretabilidadFase(pred)}
                         </div>
                     </div>`;
             });
@@ -451,8 +504,11 @@
             </div>
             <div class="p-4 rounded-xl bg-slate-900/40 border border-slate-800 flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Clasificación de errores</p>
-                    <p class="text-sm font-bold ${modelo ? 'text-emerald-400' : 'text-amber-400'} mt-1">${modelo ? 'Modelo activo' : 'Todavía no entrenado'}</p>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Detección de errores por IA</p>
+                    <p class="text-sm font-bold ${modelo ? 'text-emerald-400' : 'text-amber-400'} mt-1">${modelo ? 'Red neuronal activa' : 'Sin modelo entrenado todavía'}</p>
+                    <p class="text-[10px] text-slate-500 mt-1">${modelo
+                        ? 'Cada zancada se ha evaluado con la red neuronal para SÍ / NO / no concluyente en cada error técnico.'
+                        : 'Se muestran los ángulos y variables biomecánicas, pero ningún modelo ha evaluado errores técnicos todavía.'}</p>
                 </div>
                 <span class="material-symbols-outlined ${modelo ? 'text-emerald-400' : 'text-amber-400'}">${modelo ? 'verified' : 'hourglass_empty'}</span>
             </div>`;
