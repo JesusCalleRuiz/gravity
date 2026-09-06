@@ -34,21 +34,18 @@ class VideoAnalysisService
             throw new \Exception("Script de Python no encontrado en: {$pythonScript}");
         }
 
-        // Detectar Python portable o estándar del sistema
-        $pythonBinary = 'python';
-        if (file_exists('C:/APPS/python-3.11.1-embed-amd64/python.exe')) {
-            $pythonBinary = 'C:/APPS/python-3.11.1-embed-amd64/python.exe';
-        }
+        $pythonBinary = \App\Support\PythonRuntime::binario();
 
         try {
             // Ejecutar el script real de Python usando Symfony Process
             $process = new \Symfony\Component\Process\Process([
-                $pythonBinary, 
-                $pythonScript, 
-                '--video', 
+                $pythonBinary,
+                $pythonScript,
+                '--video',
                 $videoPath
             ]);
-            
+            $process->setEnv(\App\Support\PythonRuntime::entornoProceso());
+
             // Timeout de 10 minutos para videos grandes
             $process->setTimeout(600);
             // Acumular stdout y stderr manualmente: getOutput() puede devolver vacío
