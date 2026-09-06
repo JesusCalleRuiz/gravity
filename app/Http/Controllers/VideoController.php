@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Video;
+use App\Jobs\GeneratePdfJob;
 use App\Jobs\ProcessVideoJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -154,37 +155,30 @@ class VideoController extends Controller
                 ->with('error', 'El informe estará disponible una vez que finalice el análisis.');
         }
 
-        $tmpDir = storage_path('app/tmp');
-        if (!File::exists($tmpDir)) {
-            File::makeDirectory($tmpDir, 0755, true);
+        // Generado por el WORKER DE LA COLA (ver GeneratePdfJob), no aquí en
+        // el proceso web: en esta máquina, lanzar el proceso Python desde
+        // el proceso que atiende la petición HTTP fallaba de forma
+        // consistente con "WinError 10106" al inicializar sockets,
+        // mientras que el worker de la cola —un proceso PHP distinto—
+        // lanza procesos Python equivalentes sin problema (es el que ya
+        // analiza vídeos con éxito). Se despacha el job y se espera aquí a
+        // que aparezca el archivo, para no cambiar la experiencia del
+        // usuario (sigue siendo "pulsar el enlace y descargar").
+        $outputPdfPath = GeneratePdfJob::rutaPdf($video->id);
+        File::delete($outputPdfPath);
+        GeneratePdfJob::dispatch($video);
+
+        $limiteEsperaSegundos = 90;
+        $esperado = 0;
+        while (!File::exists($outputPdfPath) && $esperado < $limiteEsperaSegundos) {
+            usleep(500000);
+            $esperado += 0.5;
         }
 
-        $resultJsonPath = $tmpDir . "/result_{$video->id}.json";
-        $outputPdfPath = $tmpDir . "/informe_{$video->id}.pdf";
-        File::put($resultJsonPath, json_encode($video->result_data));
-
-        $pythonBinary = 'python';
-        if (file_exists('C:/APPS/python-3.11.1-embed-amd64/python.exe')) {
-            $pythonBinary = 'C:/APPS/python-3.11.1-embed-amd64/python.exe';
-        }
-        $pythonScript = base_path('python/generar_pdf.py');
-
-        $process = new \Symfony\Component\Process\Process([
-            $pythonBinary,
-            $pythonScript,
-            '--result-json', $resultJsonPath,
-            '--output', $outputPdfPath,
-            '--titulo', $video->title,
-        ]);
-        $process->setTimeout(120);
-        $process->run();
-
-        File::delete($resultJsonPath);
-
-        if (!$process->isSuccessful() || !File::exists($outputPdfPath)) {
-            Log::error("Fallo generando PDF para video ID {$video->id}: " . $process->getErrorOutput());
+        if (!File::exists($outputPdfPath)) {
+            Log::error("PDF no disponible tras {$limiteEsperaSegundos}s de espera para video ID {$video->id}. ¿Está el worker de la cola (php artisan queue:work) en marcha?");
             return redirect()->route('videos.show', $video->id)
-                ->with('error', 'No se ha podido generar el informe PDF.');
+                ->with('error', 'No se ha podido generar el informe PDF a tiempo. Comprueba que el worker de la cola (php artisan queue:work) esté en marcha e inténtalo de nuevo.');
         }
 
         return response()->download($outputPdfPath, "informe_biomecanico_{$video->id}.pdf")->deleteFileAfterSend(true);
