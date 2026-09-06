@@ -130,7 +130,14 @@ class VideoAnalysisService
             $processedRelativePath = null;
             if (isset($output['processed_video_filename'])) {
                 $processedRelativePath = dirname($video->file_path) . '/' . $output['processed_video_filename'];
-                $output['original_file_path'] = $video->file_path;
+                // Absoluta, no $video->file_path (relativa a public/): esta
+                // ruta la usa python/generar_pdf.py con os.path.exists() e
+                // io directo, sin pasar por public_path() de Laravel. Con
+                // la relativa, el PDF fallaba siempre con "No se encuentra
+                // el vídeo original de esta sesión" porque exists() la
+                // resolvía contra el directorio de trabajo del proceso, no
+                // contra public/.
+                $output['original_file_path'] = $videoPath;
             }
 
             $videoData = [
