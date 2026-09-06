@@ -32,7 +32,12 @@ os.environ.setdefault("MEDIAPIPE_DISABLE_GPU", "1")
 # esto, cualquier tilde/ñ en las frases generadas rompe el JSON en PHP.
 sys.stdout.reconfigure(encoding="utf-8")
 
-RUTA_ENTRENADOR = Path(r"C:\var\www\html\entrenador")
+# Configurable por entorno (variable RUTA_ENTRENADOR en el .env de gravity,
+# que Laravel pasa al proceso hijo) para poder desplegar en un servidor
+# donde el proyecto "entrenador" viva en otra ruta que no sea la de Windows
+# usada en desarrollo — sin esto, el análisis fallaba en producción con
+# "ModuleNotFoundError: No module named 'core'".
+RUTA_ENTRENADOR = Path(os.environ.get("RUTA_ENTRENADOR", r"C:\var\www\html\entrenador"))
 sys.path.insert(0, str(RUTA_ENTRENADOR))
 
 from core import config as core_config  # noqa: E402
