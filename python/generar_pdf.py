@@ -48,6 +48,18 @@ def main() -> None:
         result_data = json.load(f)
 
     ruta_video_original = result_data.get("original_file_path") or result_data.get("_ruta_video_original")
+    if ruta_video_original and not os.path.exists(ruta_video_original):
+        # Sesiones analizadas antes de que VideoAnalysisService.php guardara
+        # la ruta absoluta guardaban aquí la ruta tal cual la usa Laravel
+        # (relativa a public/, p. ej. "uploads/videos/x.mp4"): sin este
+        # fallback, os.path.exists() la comprueba contra el directorio de
+        # trabajo del proceso Python, nunca la encuentra, y el informe de
+        # cualquier vídeo analizado antes de este fix queda inservible.
+        RUTA_GRAVITY_PUBLIC = Path(__file__).resolve().parent.parent / "public"
+        candidata = RUTA_GRAVITY_PUBLIC / ruta_video_original
+        if candidata.exists():
+            ruta_video_original = str(candidata)
+
     if not ruta_video_original or not os.path.exists(ruta_video_original):
         print(json.dumps({"status": "failed", "error_message": "No se encuentra el vídeo original de esta sesión."}))
         sys.exit(1)
