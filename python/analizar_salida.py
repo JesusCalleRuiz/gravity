@@ -46,11 +46,19 @@ RUTA_CACHE_GRAVITY = Path(__file__).resolve().parent.parent / "storage" / "app" 
 RUTA_CACHE_GRAVITY.mkdir(parents=True, exist_ok=True)
 core_config.CACHE_DIR = RUTA_CACHE_GRAVITY
 
+# Copias normalizadas de orientación (ver normalizar_orientacion_video):
+# fuera de public/uploads/videos a propósito, es un archivo de trabajo
+# interno, no algo que deba quedar accesible por URL ni mezclado con los
+# vídeos que sirve la app.
+RUTA_TMP_GRAVITY = Path(__file__).resolve().parent.parent / "storage" / "app" / "tmp"
+RUTA_TMP_GRAVITY.mkdir(parents=True, exist_ok=True)
+
 from core import biomecanica, calidad, experimentos, extraccion, feedback, visualizacion  # noqa: E402
 from core.eventos import segmentar_zancadas  # noqa: E402
 from core.features import calcular_features_por_frame, remuestrear_ciclo  # noqa: E402
 from core.interpretabilidad import importancia_por_fase, resumen_importancia_por_fase  # noqa: E402
 from core.modelos import predecir_con_abstencion  # noqa: E402
+from core.video_io import normalizar_orientacion_video  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Puerta de calidad — criterios propios de esta app, no cubiertos por
@@ -264,9 +272,22 @@ def run_analysis(video_path: str) -> dict:
 
     log_progress(5)
 
+    # Normalizar orientación ANTES de leer un solo frame: cv2.VideoCapture
+    # (lo que usa MediaPipe en todo core/) ignora la rotación/espejo que
+    # algunos vídeos llevan en los metadatos del contenedor, aunque
+    # cualquier reproductor SÍ la aplique. Comprobado en producción: un
+    # vídeo con esa transformación pendiente hacía que el atleta apareciera
+    # a un lado en pantalla pero MediaPipe registrara su cadera al otro
+    # lado del encuadre, invirtiendo la lateralidad de todo el análisis —
+    # y solo en ESE vídeo, no en otros grabados sin esa marca. `video_path`
+    # (nombre/carpeta) se conserva para las rutas de salida; la lectura de
+    # frames a partir de aquí usa la copia normalizada si hizo falta.
+    ruta_normalizada = RUTA_TMP_GRAVITY / f"normalizado_{Path(video_path).stem}.mp4"
+    video_path_lectura = str(normalizar_orientacion_video(video_path, ruta_normalizada))
+
     import cv2
 
-    captura = cv2.VideoCapture(video_path)
+    captura = cv2.VideoCapture(video_path_lectura)
     if not captura.isOpened():
         return {"status": "failed", "error_message": "No se ha podido abrir el vídeo."}
     ancho = int(captura.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -277,7 +298,7 @@ def run_analysis(video_path: str) -> dict:
     clip_id = "gravity_" + Path(video_path).stem
     clip = {
         "id": clip_id,
-        "ruta_archivo": video_path,
+        "ruta_archivo": video_path_lectura,
         # Vídeo grabado expresamente para esta app, no metraje de YouTube a
         # velocidad reducida: factor 1 siempre, y se da por confirmado (no
         # hay paso de confirmación manual en producción).
@@ -332,7 +353,7 @@ def run_analysis(video_path: str) -> dict:
     nombre_video_anotado = f"anotado_{Path(video_path).stem}.mp4"
     ruta_video_anotado = Path(video_path).parent / nombre_video_anotado
     visualizacion.generar_video_anotado(
-        video_path, landmarks, eventos, ruta_video_anotado, resultado_extraccion["fps_efectivo"],
+        video_path_lectura, landmarks, eventos, ruta_video_anotado, resultado_extraccion["fps_efectivo"],
         zancadas_analizadas=zancadas_json,
     )
 
