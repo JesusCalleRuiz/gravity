@@ -144,7 +144,10 @@
     </script>
 </head>
 <body class="bg-[#0b0f17] text-slate-100 min-h-screen custom-scrollbar flex">
-    @auth
+    {{-- No solo @auth: una cuenta pendiente de activación no debe ver la
+    navegación — todos sus enlaces la devolverían a esta misma pantalla
+    (EnsureUserIsActive), así que mostrarla solo confundiría. --}}
+    @if (Auth::check() && Auth::user()->active)
         <!-- Side Navigation (Colapsable) -->
         <aside id="sidebar" class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen sticky top-0 bg-[#0f172a] dark:bg-[#0c121e] shrink-0 z-30">
             <!-- Header -->
@@ -195,7 +198,7 @@
                 </a>
             </div>
         </aside>
-    @endauth
+    @endif
 
     <div class="flex-1 flex flex-col min-h-screen overflow-y-auto bg-[#0b0f17] @yield('body-class')">
         @yield('content')
