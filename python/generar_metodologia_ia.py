@@ -24,7 +24,7 @@ from pathlib import Path
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 os.environ.setdefault("MEDIAPIPE_DISABLE_GPU", "1")
 
-RUTA_ENTRENADOR = Path(r"C:\var\www\html\entrenador")
+RUTA_ENTRENADOR = Path(os.environ.get("RUTA_ENTRENADOR", r"C:\var\www\html\entrenador"))
 sys.path.insert(0, str(RUTA_ENTRENADOR))
 
 import numpy as np  # noqa: E402
