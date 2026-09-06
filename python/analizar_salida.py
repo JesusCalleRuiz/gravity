@@ -49,6 +49,7 @@ core_config.CACHE_DIR = RUTA_CACHE_GRAVITY
 from core import biomecanica, calidad, experimentos, extraccion, feedback, visualizacion  # noqa: E402
 from core.eventos import segmentar_zancadas  # noqa: E402
 from core.features import calcular_features_por_frame, remuestrear_ciclo  # noqa: E402
+from core.interpretabilidad import importancia_por_fase, resumen_importancia_por_fase  # noqa: E402
 from core.modelos import predecir_con_abstencion  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -189,9 +190,28 @@ def analizar_zancada(
             )[0]
             etiqueta_texto = {1: "SÍ", 0: "no", -1: "no concluyente"}
             fiabilidad_por_clase = bundle["config"].get("fiabilidad_por_clase", {})
+
+            # Interpretabilidad: qué tramo de fase (0-100% del ciclo) influyó
+            # más en el veredicto de cada clase, por ablación/oclusión (ver
+            # core.interpretabilidad). Es la respuesta a "por qué dice esto
+            # el modelo", no solo "qué dice" — barato de calcular (10
+            # inferencias extra sobre un modelo pequeño) y muy defendible
+            # frente a un tribunal de TFM de IA.
+            resumen_fase_por_clase = {}
+            try:
+                importancias = importancia_por_fase(bundle["modelo"], bundle["escalador"], ciclo, n_segmentos=10)
+                for info_fase in resumen_importancia_por_fase(importancias, bundle["ids_etiquetas"]):
+                    resumen_fase_por_clase[info_fase["id_etiqueta"]] = info_fase
+            except Exception:
+                # La interpretabilidad es un extra sobre la predicción ya
+                # calculada: si falla por lo que sea, no debe tirar abajo el
+                # análisis completo de la zancada.
+                pass
+
             for id_etiqueta, prob, pred in zip(bundle["ids_etiquetas"], probabilidades, predicciones):
                 info_error = catalogo_por_id.get(id_etiqueta, {})
                 info_fiabilidad = fiabilidad_por_clase.get(id_etiqueta, {})
+                info_fase = resumen_fase_por_clase.get(id_etiqueta)
                 predicciones_json.append(
                     {
                         "id_etiqueta": id_etiqueta,
@@ -208,6 +228,9 @@ def analizar_zancada(
                         # solo confiar en que el umbral ya lo filtra.
                         "fiable": info_fiabilidad.get("fiable"),
                         "auc_calibracion": info_fiabilidad.get("auc_calibracion"),
+                        "fase_mas_influyente_inicio": info_fase["fase_mas_influyente_inicio"] if info_fase else None,
+                        "fase_mas_influyente_fin": info_fase["fase_mas_influyente_fin"] if info_fase else None,
+                        "perfil_importancia_fase": info_fase["perfil"] if info_fase else None,
                     }
                 )
         except ValueError:
