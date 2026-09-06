@@ -68,6 +68,11 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            // Las cuentas nuevas nacen pendientes de activación manual (ver
+            // EnsureUserIsActive): un administrador las activa a mano en la
+            // tabla users. Las cuentas que ya existían antes de este cambio
+            // no se ven afectadas (la columna tiene default true).
+            'active' => false,
         ]);
 
         Auth::login($user);
